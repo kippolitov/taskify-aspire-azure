@@ -47,6 +47,12 @@
     flex-direction: column;
     gap: 0.5rem;
     min-height: 60px;
+    transition: background-color 0.15s ease;
+}
+
+.kanban-column__cards--drag-over {
+    background: color-mix(in srgb, var(--color-primary) 12%, white 88%);
+    border-radius: 0.6rem;
 }
 
 /* Task card */
@@ -56,8 +62,28 @@
     border-radius: var(--radius-card);
     padding: 0.75rem;
     cursor: pointer;
-    transition: box-shadow 0.1s ease, background 0.1s ease;
+    transition: transform 0.08s ease, box-shadow 0.1s ease, background 0.1s ease;
     color: var(--color-text);
+    touch-action: pan-y;
+    user-select: none;
+    will-change: transform;
+}
+
+.task-card--dragging {
+    opacity: 0.9;
+    transform: rotate(1deg) scale(1.01);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
+}
+
+.task-card--chosen {
+    background: color-mix(in srgb, var(--color-primary) 10%, white 90%);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-card-border) 60%);
+}
+
+.task-card--ghost {
+    opacity: 0.35;
+    background: color-mix(in srgb, var(--color-primary) 8%, white 92%);
+    border-style: dashed;
 }
 
 .task-card:hover,

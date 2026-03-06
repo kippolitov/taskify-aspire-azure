@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Taskify.Migrator\Taskify.Migrator.csproj" />
     <ProjectReference Include="..\Taskify.Api\Taskify.Api.csproj" />
     <ProjectReference Include="..\Taskify.Web\Taskify.Web.csproj" />
   </ItemGroup>
