@@ -1,0 +1,278 @@
+@rendermode InteractiveServer
+@inject ApiClient Api
+@inject IdentityService Identity
+
+<div
+    class="modal d-block"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="task-detail-title"
+    @onclick="HandleBackdropClick">
+    <div class="modal-dialog modal-lg" @onclick:stopPropagation>
+        <div class="modal-content">
+            <div class="modal-header">
+                @if (_editing)
+                {
+                    <input
+                        class="form-control"
+                        @bind="_editTitle"
+                        aria-label="Task title"
+                        maxlength="300" />
+                }
+                else
+                {
+                    <h5 class="modal-title" id="task-detail-title">@Task.Title</h5>
+                }
+                <button
+                    type="button"
+                    class="btn-close"
+                    aria-label="Close task detail"
+                    @onclick="OnClose"></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Assignee -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Assignee</label>
+                    <select class="form-select" @onchange="OnAssigneeChanged" aria-label="Assign task">
+                        <option value="">— Unassigned —</option>
+                        @foreach (var user in AllUsers)
+                        {
+                            <option value="@user.Id" selected="@(Task.Assignee?.Id == user.Id)">
+                                @user.DisplayName
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    @if (_editing)
+                    {
+                        <textarea
+                            class="form-control"
+                            rows="4"
+                            @bind="_editDescription"
+                            aria-label="Task description"
+                            maxlength="4000"></textarea>
+                    }
+                    else
+                    {
+                        <p class="text-muted">
+                            @if (string.IsNullOrWhiteSpace(Task.Description))
+                            {
+                                <em>No description.</em>
+                            }
+                            else
+                            {
+                                @Task.Description
+                            }
+                        </p>
+                    }
+                </div>
+
+                <!-- Edit / Save / Cancel -->
+                @if (!_editing)
+                {
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="StartEdit">Edit</button>
+                }
+                else
+                {
+                    <button class="btn btn-sm btn-primary me-2" @onclick="SaveEdit">Save</button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                }
+
+                @if (_saveError is not null)
+                {
+                    <div class="alert alert-danger mt-2 py-1 px-2 small" role="alert">@_saveError</div>
+                }
+
+                <hr />
+
+                <!-- Comments -->
+                <h6 class="fw-semibold mb-3">Comments (@_comments.Count)</h6>
+
+                @if (_commentsLoading)
+                {
+                    <div class="spinner-border spinner-border-sm" role="status" aria-label="Loading comments"></div>
+                }
+                else
+                {
+                    <div aria-live="polite">
+                        @foreach (var comment in _comments)
+                        {
+                            <CommentItem
+                                Comment="comment"
+                                CurrentUserId="Identity.CurrentUser?.Id"
+                                OnEdited="HandleCommentEdited"
+                                OnDeleted="HandleCommentDeleted" />
+                        }
+                    </div>
+
+                    @if (Identity.IsAuthenticated)
+                    {
+                        <div class="mt-3">
+                            <label class="form-label" for="new-comment">Add a comment</label>
+                            <textarea
+                                id="new-comment"
+                                class="form-control mb-2"
+                                rows="2"
+                                @bind="_newCommentText"
+                                placeholder="Write a comment…"
+                                maxlength="10000"
+                                aria-label="New comment text"></textarea>
+                            <button
+                                class="btn btn-sm btn-primary"
+                                @onclick="PostComment"
+                                disabled="@string.IsNullOrWhiteSpace(_newCommentText)">
+                                Post
+                            </button>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="modal-footer text-muted small">
+                <span>Status: @Task.Status</span>
+                <span class="ms-3">Updated: @Task.UpdatedAt.ToString("g")</span>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+
+@code {
+    [Parameter, EditorRequired] public TaskDto Task { get; set; } = null!;
+    [Parameter, EditorRequired] public int ProjectId { get; set; }
+    [Parameter, EditorRequired] public List<UserDto> AllUsers { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<TaskDto> OnTaskUpdated { get; set; }
+
+    private List<CommentDto> _comments = [];
+    private bool _commentsLoading = true;
+
+    private bool _editing;
+    private string _editTitle = string.Empty;
+    private string? _editDescription;
+    private string? _saveError;
+    private string? _newCommentText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editTitle = Task.Title;
+        _editDescription = Task.Description;
+
+        try
+        {
+            _comments = await Api.GetTaskCommentsAsync(Task.Id) ?? [];
+        }
+        catch
+        {
+            // non-critical
+        }
+        finally
+        {
+            _commentsLoading = false;
+        }
+    }
+
+    private void StartEdit()
+    {
+        _editTitle = Task.Title;
+        _editDescription = Task.Description;
+        _editing = true;
+        _saveError = null;
+    }
+
+    private void CancelEdit() => _editing = false;
+
+    private async Task SaveEdit()
+    {
+        _saveError = null;
+        if (string.IsNullOrWhiteSpace(_editTitle))
+        {
+            _saveError = "Title is required.";
+            return;
+        }
+
+        try
+        {
+            var updated = await Api.UpdateTaskAsync(
+                Task.Id,
+                _editTitle,
+                _editDescription,
+                Task.Assignee?.Id
+            );
+            if (updated is not null)
+                await OnTaskUpdated.InvokeAsync(updated);
+
+            _editing = false;
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+    }
+
+    private async Task OnAssigneeChanged(ChangeEventArgs e)
+    {
+        int? assigneeId = string.IsNullOrEmpty(e.Value?.ToString())
+            ? null
+            : int.Parse(e.Value!.ToString()!);
+
+        try
+        {
+            var updated = await Api.UpdateTaskAssigneeAsync(Task.Id, assigneeId);
+            if (updated is not null)
+                await OnTaskUpdated.InvokeAsync(updated);
+        }
+        catch
+        {
+            // swallow; board will reconcile via SignalR
+        }
+    }
+
+    private async Task PostComment()
+    {
+        if (string.IsNullOrWhiteSpace(_newCommentText) || !Identity.IsAuthenticated)
+            return;
+
+        try
+        {
+            var comment = await Api.AddCommentAsync(
+                Task.Id,
+                Identity.CurrentUser!.Id,
+                _newCommentText
+            );
+            if (comment is not null)
+            {
+                _comments.Add(comment);
+                _newCommentText = null;
+                await OnTaskUpdated.InvokeAsync(Task with { CommentCount = _comments.Count });
+            }
+        }
+        catch
+        {
+            // non-critical; reload on next open
+        }
+    }
+
+    private async Task HandleCommentEdited(CommentDto updated)
+    {
+        var idx = _comments.FindIndex(c => c.Id == updated.Id);
+        if (idx >= 0)
+            _comments[idx] = updated;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleCommentDeleted(int commentId)
+    {
+        _comments.RemoveAll(c => c.Id == commentId);
+        await OnTaskUpdated.InvokeAsync(Task with { CommentCount = _comments.Count });
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleBackdropClick() => await OnClose.InvokeAsync();
+}

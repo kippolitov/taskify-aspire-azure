@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Taskify.Api/Taskify.Api.csproj" />
+    <Project Path="src/Taskify.AppHost/Taskify.AppHost.csproj" />
+    <Project Path="src/Taskify.ServiceDefaults/Taskify.ServiceDefaults.csproj" />
+    <Project Path="src/Taskify.Shared/Taskify.Shared.csproj" />
+    <Project Path="src/Taskify.Web/Taskify.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Taskify.Api.Tests/Taskify.Api.Tests.csproj" />
+    <Project Path="tests/Taskify.Benchmarks/Taskify.Benchmarks.csproj" />
+    <Project Path="tests/Taskify.Web.Tests/Taskify.Web.Tests.csproj" />
+  </Folder>
+</Solution>

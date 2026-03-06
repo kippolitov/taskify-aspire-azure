@@ -1,0 +1,67 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject ApiClient Api
+@inject IdentityService Identity
+@inject NavigationManager Nav
+
+<PageTitle>Taskify — Select User</PageTitle>
+
+<div class="container py-5">
+    <h1 class="mb-1">Welcome to Taskify</h1>
+    <p class="text-muted mb-4">Select your name to continue.</p>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status" aria-label="Loading users"></div>
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_error</div>
+    }
+    else
+    {
+        <div class="user-grid" role="list">
+            @foreach (var user in _users)
+            {
+                <button
+                    class="user-card"
+                    role="listitem"
+                    aria-label="Select @user.DisplayName"
+                    @onclick="() => SelectUser(user)">
+                    <div class="user-card__name">@user.DisplayName</div>
+                    <div class="user-card__role">@user.Role</div>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<UserDto> _users = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _users = await Api.GetUsersAsync() ?? [];
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load users: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SelectUser(UserDto user)
+    {
+        Identity.SetUser(user);
+        Nav.NavigateTo("/projects");
+    }
+}

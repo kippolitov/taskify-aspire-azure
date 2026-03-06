@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="*" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers.PostgreSQL" Version="*" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Taskify.Api\Taskify.Api.csproj" />
+    <ProjectReference Include="..\..\src\Taskify.Shared\Taskify.Shared.csproj" />
+  </ItemGroup>
+</Project>

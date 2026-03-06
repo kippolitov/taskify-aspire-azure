@@ -1,0 +1,84 @@
+## .NET / C# 14 / .NET 10 / .NET Aspire
+
+# Build outputs
+bin/
+obj/
+out/
+
+# Build results (Windows-style paths with backslash, literal on macOS)
+bin\\Debug/
+bin\\Release/
+obj\\Debug/
+obj\\Release/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+
+# Rider / JetBrains
+.idea/
+*.iml
+*.ipr
+
+# VS Code (keep settings, ignore per-user state)
+.vscode/launch.json
+.vscode/*.code-workspace
+
+# .NET Aspire secrets & connection strings (NEVER commit)
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+*.pfx
+*.p12
+secrets/
+.secrets/
+.aspire/
+
+# User secrets
+/src/*/secrets.json
+
+# Test results & coverage
+TestResults/
+coverage/
+coverage.cobertura.xml
+*.trx
+*.coverage
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# k6 output
+k6-results/
+
+# Logs
+*.log
+logs/
+
+# Environment & config overrides
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  T044 — Coverlet coverage gates.
+  Run with:
+    dotnet test --collect:"XPlat Code Coverage" --settings coverage.runsettings
+  Or add --threshold flags directly:
+    dotnet test --collect:"XPlat Code Coverage" /p:Threshold=80 /p:ThresholdType=line
+
+  Thresholds enforced:
+    - Overall line coverage  ≥ 80 %
+    - Services/ line coverage ≥ 95 %
+
+  For axe-core WCAG 2.1 AA accessibility testing, integrate via Playwright or
+  Deque's axe-playwright package in an E2E test project. The server-rendered
+  HTML can be audited by running:
+    npx @axe-core/cli http://localhost:5000 --include .kanban-board,.modal-dialog
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <!-- Exclude generated code and non-testable entry points -->
+          <Exclude>
+            [Taskify.AppHost]*
+            [Taskify.Benchmarks]*
+            [Taskify.ServiceDefaults]*
+            [*]*.Migrations.*
+            [*]*Program
+          </Exclude>
+          <!-- Include source projects -->
+          <Include>
+            [Taskify.Api]*
+            [Taskify.Web]*
+            [Taskify.Shared]*
+          </Include>
+          <ExcludeByFile>
+            **/obj/**
+            **/Migrations/**
+          </ExcludeByFile>
+          <Format>opencover</Format>
+          <UseSourceLink>true</UseSourceLink>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+  <!--
+    Threshold gates below are enforced by the coverlet.msbuild property in each
+    test project's .csproj, or by passing them to `dotnet test`:
+
+    dotnet test Taskify.slnx \
+      --collect:"XPlat Code Coverage" \
+      --settings coverage.runsettings \
+      /p:Threshold=80 \
+      /p:ThresholdType=line \
+      /p:ThresholdStat=total
+
+    For per-assembly thresholds add separate test runs or use coverlet.collector
+    with per-project configuration.
+  -->
+</RunSettings>

@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+
+  <!-- SonarAnalyzer: applies to all projects; PrivateAssets prevents transitive propagation -->
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.*" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
