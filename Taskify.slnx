@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Taskify.Api/Taskify.Api.csproj" />
     <Project Path="src/Taskify.AppHost/Taskify.AppHost.csproj" />
+    <Project Path="src/Taskify.Migrator/Taskify.Migrator.csproj" />
     <Project Path="src/Taskify.ServiceDefaults/Taskify.ServiceDefaults.csproj" />
     <Project Path="src/Taskify.Shared/Taskify.Shared.csproj" />
     <Project Path="src/Taskify.Web/Taskify.Web.csproj" />

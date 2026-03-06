@@ -13,6 +13,41 @@ namespace Taskify.Web.Tests.Components;
 /// </summary>
 public class SortableInteropJsTests : BunitContext
 {
+    private sealed class DelayedTestApiHandler(
+        Dictionary<string, string> responses,
+        int delayMs
+    ) : HttpMessageHandler
+    {
+        private readonly Dictionary<string, string> _responses = responses;
+        private readonly int _delayMs = delayMs;
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            await Task.Delay(_delayMs, cancellationToken);
+
+            var path = request.RequestUri?.AbsolutePath ?? "";
+            foreach (var (pattern, json) in _responses)
+            {
+                if (path.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(
+                            json,
+                            System.Text.Encoding.UTF8,
+                            "application/json"
+                        ),
+                    };
+                }
+            }
+
+            return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
+        }
+    }
+
     private IRenderedComponent<KanbanBoard> RenderAuthenticatedBoard()
     {
         var handler = new TestApiHandler(
@@ -71,6 +106,50 @@ public class SortableInteropJsTests : BunitContext
 
         // Every call should carry the DotNetObjectReference and a column status string
         Assert.All(initCalls, call => Assert.NotEmpty(call.Arguments));
+    }
+
+    [Fact]
+    public void Board_WhenInitialRenderIsLoading_StillInitializesSortableAfterDataLoads()
+    {
+        var handler = new DelayedTestApiHandler(
+            new Dictionary<string, string>
+            {
+                ["/api/projects/1/tasks"] = TestApiHandler.Serialize(TestData.SampleTasks),
+                ["/api/projects/1"] = TestApiHandler.Serialize(TestData.ThreeProjects[0]),
+                ["/api/users"] = TestApiHandler.Serialize(TestData.FiveUsers),
+            },
+            delayMs: 50
+        );
+
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
+        var identity = new IdentityService();
+        identity.SetUser(TestData.FiveUsers[0]);
+
+        Services.AddSingleton(identity);
+        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton<BoardHubClient>(
+            new BoardHubClient(new NullHttpMessageHandlerFactory())
+        );
+
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<KanbanBoard>(p => p.Add(b => b.ProjectId, 1));
+        cut.WaitForElement(".kanban-board", TimeSpan.FromSeconds(3));
+
+        cut.WaitForAssertion(
+            () =>
+                Assert.Equal(
+                    4,
+                    JSInterop
+                        .Invocations.Count(i =>
+                            i.Identifier.Contains(
+                                "sortableInterop.init",
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                ),
+            TimeSpan.FromSeconds(3)
+        );
     }
 
     [Fact]

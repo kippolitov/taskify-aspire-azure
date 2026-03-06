@@ -1,30 +1,52 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Taskify.Web</a>
+﻿<div class="nav-shell">
+    <div class="nav-header">
+        <div class="brand-wrap">
+            <a class="navbar-brand" href="">Taskify</a>
+            <span class="brand-subtitle">Project collaboration</span>
+        </div>
+
+        <button
+            type="button"
+            title="Navigation menu"
+            aria-label="Toggle navigation"
+            aria-expanded="@_isMenuOpen"
+            class="navbar-toggler @(_isMenuOpen ? "is-open" : string.Empty)"
+            @onclick="ToggleMenu"></button>
+    </div>
+
+    <div class="nav-scrollable @(_isMenuOpen ? "is-open" : string.Empty)">
+        <nav class="nav-menu-links">
+            <div class="nav-item">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseMenu">
+                    <span class="nav-link__text">Home</span>
+                </NavLink>
+            </div>
+
+            <div class="nav-item">
+                <NavLink class="nav-link" href="projects" @onclick="CloseMenu">
+                    <span class="nav-link__text">Projects</span>
+                </NavLink>
+            </div>
+
+            <div class="nav-item">
+                <NavLink class="nav-link" href="projects" Match="NavLinkMatch.Prefix" @onclick="CloseMenu">
+                    <span class="nav-link__text">Boards</span>
+                </NavLink>
+            </div>
+
+            <div class="nav-footer">
+                <span>Taskify</span>
+                <small>Built with Blazor</small>
+            </div>
+        </nav>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+@code {
+    private bool _isMenuOpen;
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+    private void ToggleMenu() => _isMenuOpen = !_isMenuOpen;
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+    private void CloseMenu() => _isMenuOpen = false;
+}
 

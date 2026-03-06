@@ -11,6 +11,45 @@ namespace Taskify.Web.Tests.Components;
 /// <summary>T025c — KanbanBoard drag-and-drop callback tests.</summary>
 public class KanbanBoardDragTests : BunitContext
 {
+    private sealed class DelayedDragApiHandler(
+        Dictionary<string, string> responses,
+        int delayMs
+    ) : HttpMessageHandler
+    {
+        private readonly Dictionary<string, string> _responses = responses;
+        private readonly int _delayMs = delayMs;
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            var path = request.RequestUri?.AbsolutePath ?? string.Empty;
+
+            foreach (var (pattern, json) in _responses)
+            {
+                if (!path.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (_delayMs > 0 && request.Method == HttpMethod.Patch)
+                {
+                    await Task.Delay(_delayMs, cancellationToken);
+                }
+
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        json,
+                        System.Text.Encoding.UTF8,
+                        "application/json"
+                    ),
+                };
+            }
+
+            return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
+        }
+    }
+
     private IRenderedComponent<KanbanBoard> RenderBoard()
     {
         // Task 1 starts in the first column; the PATCH endpoint returns it as InProgress
@@ -43,6 +82,53 @@ public class KanbanBoardDragTests : BunitContext
         var cut = Render<KanbanBoard>(p => p.Add(b => b.ProjectId, 1));
         cut.WaitForElement(".kanban-board", TimeSpan.FromSeconds(3));
         return cut;
+    }
+
+    [Fact]
+    public async Task OnTaskDropped_UpdatesStatusAndTotalsImmediately_BeforeApiCompletes()
+    {
+        var movedTask = TestData.SampleTasks[0] with { Status = ColumnStatus.InProgress };
+
+        var handler = new DelayedDragApiHandler(
+            new Dictionary<string, string>
+            {
+                ["/api/tasks/1/status"] = TestApiHandler.Serialize(movedTask),
+                ["/api/projects/1/tasks"] = TestApiHandler.Serialize(TestData.SampleTasks),
+                ["/api/projects/1"] = TestApiHandler.Serialize(TestData.ThreeProjects[0]),
+                ["/api/users"] = TestApiHandler.Serialize(TestData.FiveUsers),
+            },
+            delayMs: 250
+        );
+
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
+        var identity = new IdentityService();
+        identity.SetUser(TestData.FiveUsers[0]);
+
+        Services.AddSingleton(identity);
+        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton<BoardHubClient>(
+            new BoardHubClient(new NullHttpMessageHandlerFactory())
+        );
+
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<KanbanBoard>(p => p.Add(b => b.ProjectId, 1));
+        cut.WaitForElement(".kanban-board", TimeSpan.FromSeconds(3));
+
+        var dropTask = cut.InvokeAsync(() => cut.Instance.OnTaskDropped("1", "ToDo", "InProgress"));
+
+        cut.Render();
+
+        var todoColumn = cut.Find("[aria-label='To Do tasks']");
+        var inProgressColumn = cut.Find("[aria-label='In Progress tasks']");
+
+        Assert.DoesNotContain("Set up CI pipeline", todoColumn.TextContent);
+        Assert.Contains("Set up CI pipeline", inProgressColumn.TextContent);
+
+        var headers = cut.FindAll(".kanban-column__header");
+        Assert.Contains("To Do0", headers[0].TextContent.Replace(" ", string.Empty));
+        Assert.Contains("In Progress2", headers[1].TextContent.Replace(" ", string.Empty));
+
+        await dropTask;
     }
 
     [Fact]

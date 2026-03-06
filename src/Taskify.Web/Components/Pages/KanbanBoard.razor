@@ -1,5 +1,4 @@
 @page "/board/{ProjectId:int}"
-@rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject ApiClient Api
 @inject IdentityService Identity
@@ -88,6 +87,7 @@ else
     private TaskDto? _selectedTask;
     private bool _loading = true;
     private string? _error;
+    private bool _interopInitialized;
 
     private readonly Dictionary<ColumnStatus, ElementReference> _columnRefs = [];
     private DotNetObjectReference<KanbanBoard>? _dotnetRef;
@@ -134,8 +134,9 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_loading && _error is null)
+        if (!_interopInitialized && !_loading && _error is null)
         {
+            _interopInitialized = true;
             _dotnetRef = DotNetObjectReference.Create(this);
             foreach (var (status, _) in Columns)
             {
@@ -164,16 +165,42 @@ else
     {
         if (
             !int.TryParse(taskId, out var id)
+            || !Enum.TryParse<ColumnStatus>(fromCol, out var previousStatus)
             || !Enum.TryParse<ColumnStatus>(toCol, out var newStatus)
         )
             return;
 
-        var updated = await Api.MoveTaskAsync(id, newStatus);
-        if (updated is not null)
+        if (previousStatus == newStatus)
+            return;
+
+        var idx = _tasks.FindIndex(t => t.Id == id);
+        if (idx < 0)
+            return;
+
+        var originalTask = _tasks[idx];
+
+        // Optimistic UI update for immediate feedback and counter refresh.
+        _tasks[idx] = originalTask with { Status = newStatus, UpdatedAt = DateTimeOffset.UtcNow };
+        await InvokeAsync(StateHasChanged);
+
+        try
         {
-            UpdateTask(updated);
-            await InvokeAsync(StateHasChanged);
+            var updated = await Api.MoveTaskAsync(id, newStatus);
+            if (updated is not null)
+            {
+                UpdateTask(updated);
+            }
+            else
+            {
+                _tasks[idx] = originalTask;
+            }
         }
+        catch
+        {
+            _tasks[idx] = originalTask;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private List<TaskDto> TasksForColumn(ColumnStatus status) =>
