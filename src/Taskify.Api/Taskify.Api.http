@@ -1,6 +1,6 @@
-@Taskify.Api_HostAddress = http://localhost:5271
+@Taskify_Api_HostAddress = http://localhost:5271
 
-GET {{Taskify.Api_HostAddress}}/weatherforecast/
+GET {{Taskify_Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
