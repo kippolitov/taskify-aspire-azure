@@ -1,0 +1,86 @@
+@page "/projects"
+@rendermode InteractiveServer
+@inject ApiClient Api
+@inject IdentityService Identity
+@inject NavigationManager Nav
+
+<PageTitle>Taskify — Projects</PageTitle>
+
+@if (!Identity.IsAuthenticated)
+{
+    <RedirectToHome />
+}
+else
+{
+    <div class="container py-5">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h1 class="mb-0">Projects</h1>
+                <small class="text-muted">Logged in as <strong>@Identity.CurrentUser!.DisplayName</strong></small>
+            </div>
+            <button class="btn btn-link text-muted" @onclick="SwitchUser" aria-label="Switch user">
+                Switch User
+            </button>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border" role="status" aria-label="Loading projects"></div>
+            </div>
+        }
+        else if (_error is not null)
+        {
+            <div class="alert alert-danger" role="alert">@_error</div>
+        }
+        else
+        {
+            <div class="project-grid" role="list">
+                @foreach (var project in _projects)
+                {
+                    <a class="project-card"
+                       href="/board/@project.Id"
+                       role="listitem"
+                       aria-label="Open project @project.Name">
+                        <div class="project-card__name">@project.Name</div>
+                        @if (!string.IsNullOrWhiteSpace(project.Description))
+                        {
+                            <div class="project-card__desc">@project.Description</div>
+                        }
+                    </a>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<ProjectDto> _projects = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Identity.IsAuthenticated)
+            return;
+
+        try
+        {
+            _projects = await Api.GetProjectsAsync() ?? [];
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load projects: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SwitchUser()
+    {
+        Identity.ClearUser();
+        Nav.NavigateTo("/");
+    }
+}

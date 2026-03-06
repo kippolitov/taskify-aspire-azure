@@ -1,0 +1,99 @@
+@inject ApiClient Api
+
+<div class="comment" role="article" aria-label="Comment by @Comment.Author.DisplayName">
+    <div class="comment__header">
+        <span class="comment__author">@Comment.Author.DisplayName</span>
+        <span>
+            @Comment.CreatedAt.ToString("g")
+            @if (Comment.EditedAt.HasValue)
+            {
+                <em class="ms-1">(edited @Comment.EditedAt.Value.ToString("g"))</em>
+            }
+        </span>
+    </div>
+
+    @if (_editing)
+    {
+        <textarea
+            class="form-control mb-2"
+            rows="2"
+            @bind="_editText"
+            maxlength="10000"
+            aria-label="Edit comment text"></textarea>
+        <button class="btn btn-sm btn-primary me-1" @onclick="SaveEdit">Save</button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+        @if (_error is not null)
+        {
+            <div class="text-danger small mt-1" role="alert">@_error</div>
+        }
+    }
+    else
+    {
+        <p class="comment__text">@Comment.Text</p>
+        @if (IsAuthor)
+        {
+            <div class="d-flex gap-2 mt-1">
+                <button class="btn btn-link btn-sm p-0" @onclick="StartEdit" aria-label="Edit comment">Edit</button>
+                <button class="btn btn-link btn-sm p-0 text-danger" @onclick="Delete" aria-label="Delete comment">Delete</button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CommentDto Comment { get; set; } = null!;
+    [Parameter] public int? CurrentUserId { get; set; }
+    [Parameter] public EventCallback<CommentDto> OnEdited { get; set; }
+    [Parameter] public EventCallback<int> OnDeleted { get; set; }
+
+    private bool _editing;
+    private string _editText = string.Empty;
+    private string? _error;
+
+    private bool IsAuthor => CurrentUserId.HasValue && CurrentUserId == Comment.Author.Id;
+
+    private void StartEdit()
+    {
+        _editText = Comment.Text;
+        _editing = true;
+        _error = null;
+    }
+
+    private void CancelEdit() => _editing = false;
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editText))
+        {
+            _error = "Comment text cannot be empty.";
+            return;
+        }
+
+        try
+        {
+            var updated = await Api.EditCommentAsync(Comment.Id, CurrentUserId!.Value, _editText);
+            if (updated is not null)
+            {
+                _editing = false;
+                await OnEdited.InvokeAsync(updated);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task Delete()
+    {
+        try
+        {
+            await Api.DeleteCommentAsync(Comment.Id, CurrentUserId!.Value);
+            await OnDeleted.InvokeAsync(Comment.Id);
+        }
+        catch
+        {
+            // swallow — comment may already be gone
+        }
+    }
+}

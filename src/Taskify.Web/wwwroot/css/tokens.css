@@ -1,0 +1,208 @@
+/* Taskify design tokens — WCAG 2.1 AA verified */
+:root {
+    --color-card-mine: #e0f2fe;
+    --color-card-default: #ffffff;
+    --color-primary: #0ea5e9;
+    --color-text: #0f172a;
+    --color-text-muted: #64748b;
+    --spacing-4: 1rem;
+
+    --color-column-bg: #f8fafc;
+    --color-column-border: #e2e8f0;
+    --color-card-border: #cbd5e1;
+    --color-card-hover: #f1f5f9;
+    --radius-card: 0.5rem;
+}
+
+/* Kanban board layout */
+.kanban-board {
+    display: flex;
+    gap: var(--spacing-4);
+    overflow-x: auto;
+    padding: var(--spacing-4);
+    align-items: flex-start;
+}
+
+.kanban-column {
+    flex: 0 0 280px;
+    background: var(--color-column-bg);
+    border: 1px solid var(--color-column-border);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    min-height: 400px;
+}
+
+.kanban-column__header {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    padding: 0 0.25rem;
+}
+
+.kanban-column__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 60px;
+}
+
+/* Task card */
+.task-card {
+    background: var(--color-card-default);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-card);
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: box-shadow 0.1s ease, background 0.1s ease;
+    color: var(--color-text);
+}
+
+.task-card:hover,
+.task-card:focus-visible {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    background: var(--color-card-hover);
+    outline: none;
+}
+
+.task-card--mine {
+    background: var(--color-card-mine);
+}
+
+.task-card--mine:hover {
+    background: #bae6fd;
+}
+
+.task-card__title {
+    font-weight: 500;
+    font-size: 0.9375rem;
+    margin-bottom: 0.25rem;
+}
+
+.task-card__assignee {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+}
+
+.task-card__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* User selection */
+.user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-4);
+    padding: var(--spacing-4);
+}
+
+.user-card {
+    border: 2px solid var(--color-column-border);
+    border-radius: 0.75rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background: white;
+}
+
+.user-card:hover,
+.user-card:focus-visible {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+    outline: none;
+}
+
+.user-card__name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.user-card__role {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Project cards */
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-4);
+    padding: var(--spacing-4);
+}
+
+.project-card {
+    border: 1px solid var(--color-column-border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    background: white;
+    transition: box-shadow 0.15s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.project-card:hover,
+.project-card:focus-visible {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    outline: 2px solid var(--color-primary);
+    text-decoration: none;
+}
+
+.project-card__name {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--color-text);
+}
+
+.project-card__desc {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}
+
+/* Comment thread */
+.comment {
+    border-bottom: 1px solid var(--color-column-border);
+    padding: 0.75rem 0;
+}
+
+.comment__header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.comment__author {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.comment__text {
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    white-space: pre-wrap;
+}
+
+/* Buttons */
+.btn-primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background: #0284c7;
+    border-color: #0284c7;
+}

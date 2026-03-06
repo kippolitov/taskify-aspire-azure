@@ -15,11 +15,11 @@
 
 **Purpose**: Create the .NET 10 solution skeleton, all eight projects, shared NuGet configuration, and formatting tooling. No story work can begin until this phase is done.
 
-- [ ] T001 Create `Taskify.sln` and all 8 projects via `dotnet new` (AppHost, ServiceDefaults, Shared, Api, Web; Api.Tests, Web.Tests, Benchmarks) per plan.md Step 1
-- [ ] T002 [P] Add all NuGet packages (Aspire, EF Core 10, Npgsql, SignalR, bUnit 2.6.2, Testcontainers.PostgreSQL, CSharpier, SonarAnalyzer.CSharp, Coverlet, BenchmarkDotNet, k6) per research.md R-012 §1
-- [ ] T003 [P] Wire all project references in each `.csproj` (Shared ← Api; Shared ← Web; ServiceDefaults ← Api; ServiceDefaults ← Web; Api ← Api.Tests; Web ← Web.Tests)
-- [ ] T004 [P] Create `Directory.Build.props` with shared `<Nullable>enable</Nullable>`, `<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`, and `SonarAnalyzer.CSharp` package reference per plan.md Step 18
-- [ ] T005 [P] Add `.editorconfig` with CSharpier formatting rules per plan.md Step 18
+- [X] T001 Create `Taskify.sln` and all 8 projects via `dotnet new` (AppHost, ServiceDefaults, Shared, Api, Web; Api.Tests, Web.Tests, Benchmarks) per plan.md Step 1
+- [X] T002 [P] Add all NuGet packages (Aspire, EF Core 10, Npgsql, SignalR, bUnit 2.6.2, Testcontainers.PostgreSQL, CSharpier, SonarAnalyzer.CSharp, Coverlet, BenchmarkDotNet, k6) per research.md R-012 §1
+- [X] T003 [P] Wire all project references in each `.csproj` (Shared ← Api; Shared ← Web; ServiceDefaults ← Api; ServiceDefaults ← Web; Api ← Api.Tests; Web ← Web.Tests)
+- [X] T004 [P] Create `Directory.Build.props` with shared `<Nullable>enable</Nullable>`, `<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`, and `SonarAnalyzer.CSharp` package reference per plan.md Step 18
+- [X] T005 [P] Add `.editorconfig` with CSharpier formatting rules per plan.md Step 18
 
 **Checkpoint**: Solution builds (`dotnet build Taskify.sln`) with zero errors before continuing.
 
@@ -31,13 +31,13 @@
 
 **⚠ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Define 5 domain entity classes (User, Project, TaskItem, Comment, Notification) in `src/Taskify.Api/Data/Entities/` per data-model.md Entities section
-- [ ] T007 [P] Create all 5 shared DTO records (UserDto, ProjectDto, TaskItemDto, CommentDto, NotificationDto) in `src/Taskify.Shared/Dtos/` per contracts/rest-api.md request/response shapes
-- [ ] T008 Configure `TaskifyDbContext` with Npgsql provider and `UseSnakeCaseNamingConvention()` in `src/Taskify.Api/Data/TaskifyDbContext.cs` per research.md R-012 §3
-- [ ] T009 Generate EF Core migration `InitialCreate` and add `HasData` seed rows (5 users, 3 projects, 10 tasks) in `src/Taskify.Api/Data/TaskifyDbContext.cs` per data-model.md Seed Data section — use `MigrateAsync()` only, never `EnsureCreatedAsync()`
-- [ ] T010 Configure `src/Taskify.Api/Program.cs` — register `AddNpgsqlDbContext<TaskifyDbContext>("taskifydb")`, call `MigrateAsync()` at startup, register `AddSignalR()`, map `/hubs/taskify` per research.md R-012 §5 (critical: connection name must match exactly)
-- [ ] T011 Configure `src/Taskify.AppHost/Program.cs` — `AddPostgres("postgres").AddDatabase("taskifydb")` → api `WithReference(postgres).WaitFor(postgres)` → web `WithReference(api).WaitFor(api)` per plan.md Step 4
-- [ ] T012 Configure `src/Taskify.Web/Program.cs` — `AddServiceDefaults()`, `AddHttpClient<ApiClient>` with base address `https+http://taskify-api` and `AddServiceDiscovery()` per research.md R-010 §4–§6
+- [X] T006 Define 5 domain entity classes (User, Project, TaskItem, Comment, Notification) in `src/Taskify.Api/Data/Entities/` per data-model.md Entities section
+- [X] T007 [P] Create all 5 shared DTO records (UserDto, ProjectDto, TaskItemDto, CommentDto, NotificationDto) in `src/Taskify.Shared/Dtos/` per contracts/rest-api.md request/response shapes
+- [X] T008 Configure `TaskifyDbContext` with Npgsql provider and `UseSnakeCaseNamingConvention()` in `src/Taskify.Api/Data/TaskifyDbContext.cs` per research.md R-012 §3
+- [X] T009 Generate EF Core migration `InitialCreate` and add `HasData` seed rows (5 users, 3 projects, 10 tasks) in `src/Taskify.Api/Data/TaskifyDbContext.cs` per data-model.md Seed Data section — use `MigrateAsync()` only, never `EnsureCreatedAsync()`
+- [X] T010 Configure `src/Taskify.Api/Program.cs` — register `AddNpgsqlDbContext<TaskifyDbContext>("taskifydb")`, call `MigrateAsync()` at startup, register `AddSignalR()`, map `/hubs/taskify` per research.md R-012 §5 (critical: connection name must match exactly)
+- [X] T011 Configure `src/Taskify.AppHost/Program.cs` — `AddPostgres("postgres").AddDatabase("taskifydb")` → api `WithReference(postgres).WaitFor(postgres)` → web `WithReference(api).WaitFor(api)` per plan.md Step 4
+- [X] T012 Configure `src/Taskify.Web/Program.cs` — `AddServiceDefaults()`, `AddHttpClient<ApiClient>` with base address `https+http://taskify-api` and `AddServiceDiscovery()` per research.md R-010 §4–§6
 
 **Checkpoint**: `dotnet run --project src/Taskify.AppHost` launches; Aspire dashboard shows all three resources healthy; PostgreSQL migrations applied; seed data visible.
 
@@ -51,14 +51,14 @@
 
 ### Tests for User Story 1 (write first — must FAIL before implementation)
 
-- [ ] T013a [US1] Write failing bUnit test for `UserSelection.razor` — assert 5 users rendered (names + roles) and `IdentityService.CurrentUser` set on click, in `tests/Taskify.Web.Tests/Components/UserSelectionTests.cs` per research.md R-014
+- [X] T013a [US1] Write failing bUnit test for `UserSelection.razor` — assert 5 users rendered (names + roles) and `IdentityService.CurrentUser` set on click, in `tests/Taskify.Web.Tests/Components/UserSelectionTests.cs` per research.md R-014
 
 ### Implementation for User Story 1
 
-- [ ] T013 [P] [US1] Implement `GET /api/users` and `GET /api/users/{id}` in `src/Taskify.Api/Controllers/UsersController.cs` per contracts/rest-api.md UsersController rows
-- [ ] T014 [P] [US1] Implement `IdentityService` (Scoped, `CurrentUser` property, no auth) in `src/Taskify.Web/Services/IdentityService.cs` per research.md R-005
-- [ ] T015 [US1] Implement `ApiClient` with typed `HttpClient` base and `GetUsersAsync()` / `GetUserAsync(id)` methods in `src/Taskify.Web/Services/ApiClient.cs` per research.md R-010 §6
-- [ ] T016 [US1] Implement `UserSelection.razor` — fetch users from `ApiClient`, render list (name + role), on click set `IdentityService.CurrentUser` and navigate to `/projects` in `src/Taskify.Web/Components/Pages/UserSelection.razor` per spec.md US1
+- [X] T013 [P] [US1] Implement `GET /api/users` and `GET /api/users/{id}` in `src/Taskify.Api/Controllers/UsersController.cs` per contracts/rest-api.md UsersController rows
+- [X] T014 [P] [US1] Implement `IdentityService` (Scoped, `CurrentUser` property, no auth) in `src/Taskify.Web/Services/IdentityService.cs` per research.md R-005
+- [X] T015 [US1] Implement `ApiClient` with typed `HttpClient` base and `GetUsersAsync()` / `GetUserAsync(id)` methods in `src/Taskify.Web/Services/ApiClient.cs` per research.md R-010 §6
+- [X] T016 [US1] Implement `UserSelection.razor` — fetch users from `ApiClient`, render list (name + role), on click set `IdentityService.CurrentUser` and navigate to `/projects` in `src/Taskify.Web/Components/Pages/UserSelection.razor` per spec.md US1
 
 **Checkpoint**: User Story 1 fully functional and independently testable. Verify: all 5 users shown, clicking any name navigates to project list, identity persists until page refresh.
 
@@ -72,13 +72,13 @@
 
 ### Tests for User Story 2 (write first — must FAIL before implementation)
 
-- [ ] T017a [US2] Write failing bUnit test for `ProjectList.razor` — assert 3 projects rendered and navigation invoked on click, in `tests/Taskify.Web.Tests/Components/ProjectListTests.cs` per research.md R-014
+- [X] T017a [US2] Write failing bUnit test for `ProjectList.razor` — assert 3 projects rendered and navigation invoked on click, in `tests/Taskify.Web.Tests/Components/ProjectListTests.cs` per research.md R-014
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Implement `GET /api/projects` and `GET /api/projects/{id}` in `src/Taskify.Api/Controllers/ProjectsController.cs` per contracts/rest-api.md ProjectsController rows
-- [ ] T018 [US2] Add `GetProjectsAsync()` and `GetProjectAsync(id)` methods to `src/Taskify.Web/Services/ApiClient.cs`
-- [ ] T019 [US2] Implement `ProjectList.razor` — guard redirect if no `IdentityService.CurrentUser`, fetch projects, render list, navigate to `/projects/{id}/board` on click in `src/Taskify.Web/Components/Pages/ProjectList.razor` per spec.md US2
+- [X] T017 [P] [US2] Implement `GET /api/projects` and `GET /api/projects/{id}` in `src/Taskify.Api/Controllers/ProjectsController.cs` per contracts/rest-api.md ProjectsController rows
+- [X] T018 [US2] Add `GetProjectsAsync()` and `GetProjectAsync(id)` methods to `src/Taskify.Web/Services/ApiClient.cs`
+- [X] T019 [US2] Implement `ProjectList.razor` — guard redirect if no `IdentityService.CurrentUser`, fetch projects, render list, navigate to `/projects/{id}/board` on click in `src/Taskify.Web/Components/Pages/ProjectList.razor` per spec.md US2
 
 **Checkpoint**: User Story 2 fully functional. Verify: project list shows 3 projects; clicking each navigates to the board route.
 
@@ -92,16 +92,16 @@
 
 ### Tests for User Story 3 (write first — must FAIL before implementation)
 
-- [ ] T020a [P] [US3] Write failing bUnit test for `TaskCard.razor` — assert title rendered, `.taskcard--mine` applied when assignee matches active user, `data-task-id` attribute present, in `tests/Taskify.Web.Tests/Components/TaskCardTests.cs` per research.md R-014
-- [ ] T020b [US3] Write failing bUnit test for `KanbanBoard.razor` (read-only) — assert 4 columns render in order and seed task cards appear in correct columns, in `tests/Taskify.Web.Tests/Components/KanbanBoardTests.cs` per research.md R-014
+- [X] T020a [P] [US3] Write failing bUnit test for `TaskCard.razor` — assert title rendered, `.taskcard--mine` applied when assignee matches active user, `data-task-id` attribute present, in `tests/Taskify.Web.Tests/Components/TaskCardTests.cs` per research.md R-014
+- [X] T020b [US3] Write failing bUnit test for `KanbanBoard.razor` (read-only) — assert 4 columns render in order and seed task cards appear in correct columns, in `tests/Taskify.Web.Tests/Components/KanbanBoardTests.cs` per research.md R-014
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Implement `GET /api/projects/{id}/tasks` and `GET /api/tasks/{id}` in `src/Taskify.Api/Controllers/TasksController.cs` per contracts/rest-api.md TasksController rows
-- [ ] T021 [US3] Add `GetTasksForProjectAsync(projectId)` and `GetTaskAsync(id)` to `src/Taskify.Web/Services/ApiClient.cs`
-- [ ] T022 [P] [US3] Define all `--taskify-*` CSS custom properties (design tokens) and Kanban grid layout (4-column CSS grid) in `src/Taskify.Web/wwwroot/css/app.css` per quickstart.md Design Tokens section and research.md R-007
-- [ ] T023 [P] [US3] Implement `TaskCard.razor` — render title, assignee name, `data-task-id` attribute, apply `.taskcard--mine` CSS class when `assignee.Id == IdentityService.CurrentUser.Id` in `src/Taskify.Web/Components/Pages/Shared/TaskCard.razor` per spec.md US3 and research.md R-010b §4
-- [ ] T024 [US3] Implement `KanbanBoard.razor` — fetch tasks on load, group into 4 column buckets, render `<TaskCard>` components per column in `src/Taskify.Web/Components/Pages/KanbanBoard.razor` per spec.md US3
+- [X] T020 [P] [US3] Implement `GET /api/projects/{id}/tasks` and `GET /api/tasks/{id}` in `src/Taskify.Api/Controllers/TasksController.cs` per contracts/rest-api.md TasksController rows
+- [X] T021 [US3] Add `GetTasksForProjectAsync(projectId)` and `GetTaskAsync(id)` to `src/Taskify.Web/Services/ApiClient.cs`
+- [X] T022 [P] [US3] Define all `--taskify-*` CSS custom properties (design tokens) and Kanban grid layout (4-column CSS grid) in `src/Taskify.Web/wwwroot/css/app.css` per quickstart.md Design Tokens section and research.md R-007
+- [X] T023 [P] [US3] Implement `TaskCard.razor` — render title, assignee name, `data-task-id` attribute, apply `.taskcard--mine` CSS class when `assignee.Id == IdentityService.CurrentUser.Id` in `src/Taskify.Web/Components/Pages/Shared/TaskCard.razor` per spec.md US3 and research.md R-010b §4
+- [X] T024 [US3] Implement `KanbanBoard.razor` — fetch tasks on load, group into 4 column buckets, render `<TaskCard>` components per column in `src/Taskify.Web/Components/Pages/KanbanBoard.razor` per spec.md US3
 
 **Checkpoint**: User Story 3 fully functional. Verify: all 4 columns present; seed tasks visible; active-user cards are highlighted; board is read-only (no drag yet).
 
@@ -115,19 +115,19 @@
 
 ### Tests for User Story 4 (write first — must FAIL before implementation)
 
-- [ ] T025a [US4] Write failing integration test for `PATCH /api/tasks/{id}/status` — assert LWW update persisted and 200 returned, in `tests/Taskify.Api.Tests/Controllers/TasksControllerTests.cs` per contracts/rest-api.md
-- [ ] T025b [P] [US4] Write failing integration test for `TaskifyHub.JoinBoard` — connect two test clients, trigger status update, assert both receive `TaskMoved` event, in `tests/Taskify.Api.Tests/Hubs/TaskifyHubTests.cs` per contracts/signalr-hub.md
-- [ ] T025c [P] [US4] Write failing bUnit test for `KanbanBoard.razor` drag callback — assert `OnTaskDropped` invoked with correct `(taskId, fromCol, toCol)` args and `UpdateTaskStatusAsync` called, in `tests/Taskify.Web.Tests/Components/KanbanBoardDragTests.cs` per research.md R-014
+- [X] T025a [US4] Write failing integration test for `PATCH /api/tasks/{id}/status` — assert LWW update persisted and 200 returned, in `tests/Taskify.Api.Tests/Controllers/TasksControllerTests.cs` per contracts/rest-api.md
+- [X] T025b [P] [US4] Write failing integration test for `TaskifyHub.JoinBoard` — connect two test clients, trigger status update, assert both receive `TaskMoved` event, in `tests/Taskify.Api.Tests/Hubs/TaskifyHubTests.cs` per contracts/signalr-hub.md
+- [X] T025c [P] [US4] Write failing bUnit test for `KanbanBoard.razor` drag callback — assert `OnTaskDropped` invoked with correct `(taskId, fromCol, toCol)` args and `UpdateTaskStatusAsync` called, in `tests/Taskify.Web.Tests/Components/KanbanBoardDragTests.cs` per research.md R-014
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Add `PATCH /api/tasks/{id}/status` endpoint to `src/Taskify.Api/Controllers/TasksController.cs` per contracts/rest-api.md (delegates to TaskService)
-- [ ] T026 [US4] Implement `TaskService` — `UpdateStatusAsync` using LWW `ExecuteUpdateAsync` pattern; broadcast `TaskMoved` via `IHubContext<TaskifyHub>` after update in `src/Taskify.Api/Services/TaskService.cs` per research.md R-013 and contracts/signalr-hub.md
-- [ ] T027 [US4] Implement `TaskifyHub` — `JoinBoard(projectId)`, `LeaveBoard(projectId)` methods and all 6 S→C event definitions per contracts/signalr-hub.md Hub Methods and Client Events tables in `src/Taskify.Api/Hubs/TaskifyHub.cs` per research.md R-003
-- [ ] T028 [P] [US4] Implement `sortable-interop.js` ES module — `Setup(dotNetRef, containerId)` export, `SortableJS` init with `onEnd` callback invoking `dotNetRef.invokeMethodAsync("OnTaskDropped", taskId, fromCol, toCol)` (positional args only) in `src/Taskify.Web/wwwroot/js/sortable-interop.js` per research.md R-010b §4–§7
-- [ ] T029 [P] [US4] Implement `BoardHubClient` — `HubConnectionBuilder` with `IHttpMessageHandlerFactory` bridge, service-discovery URL `https+http://taskify-api/hubs/taskify`, exponential retry policy, `IAsyncDisposable` in `src/Taskify.Web/Services/BoardHubClient.cs` per research.md R-011 §1–§8
-- [ ] T030a [US4] Add `UpdateTaskStatusAsync(id, status)` to `src/Taskify.Web/Services/ApiClient.cs` — required by `KanbanBoard.razor` drag handler (must precede T030)
-- [ ] T030 [US4] Wire `BoardHubClient` into `KanbanBoard.razor` — subscribe to `TaskMoved` event, call `InvokeAsync(StateHasChanged)` (never `StateHasChanged()` directly), invoke `JoinBoard`/`LeaveBoard`, call `UpdateTaskStatusAsync` on drop, implement `IAsyncDisposable` to unsubscribe in `src/Taskify.Web/Components/Pages/KanbanBoard.razor` per research.md R-011 §6–§7
+- [X] T025 [US4] Add `PATCH /api/tasks/{id}/status` endpoint to `src/Taskify.Api/Controllers/TasksController.cs` per contracts/rest-api.md (delegates to TaskService)
+- [X] T026 [US4] Implement `TaskService` — `UpdateStatusAsync` using LWW `ExecuteUpdateAsync` pattern; broadcast `TaskMoved` via `IHubContext<TaskifyHub>` after update in `src/Taskify.Api/Services/TaskService.cs` per research.md R-013 and contracts/signalr-hub.md
+- [X] T027 [US4] Implement `TaskifyHub` — `JoinBoard(projectId)`, `LeaveBoard(projectId)` methods and all 6 S→C event definitions per contracts/signalr-hub.md Hub Methods and Client Events tables in `src/Taskify.Api/Hubs/TaskifyHub.cs` per research.md R-003
+- [X] T028 [P] [US4] Implement `sortable-interop.js` ES module — `Setup(dotNetRef, containerId)` export, `SortableJS` init with `onEnd` callback invoking `dotNetRef.invokeMethodAsync("OnTaskDropped", taskId, fromCol, toCol)` (positional args only) in `src/Taskify.Web/wwwroot/js/sortable-interop.js` per research.md R-010b §4–§7
+- [X] T029 [P] [US4] Implement `BoardHubClient` — `HubConnectionBuilder` with `IHttpMessageHandlerFactory` bridge, service-discovery URL `https+http://taskify-api/hubs/taskify`, exponential retry policy, `IAsyncDisposable` in `src/Taskify.Web/Services/BoardHubClient.cs` per research.md R-011 §1–§8
+- [X] T030a [US4] Add `UpdateTaskStatusAsync(id, status)` to `src/Taskify.Web/Services/ApiClient.cs` — required by `KanbanBoard.razor` drag handler (must precede T030)
+- [X] T030 [US4] Wire `BoardHubClient` into `KanbanBoard.razor` — subscribe to `TaskMoved` event, call `InvokeAsync(StateHasChanged)` (never `StateHasChanged()` directly), invoke `JoinBoard`/`LeaveBoard`, call `UpdateTaskStatusAsync` on drop, implement `IAsyncDisposable` to unsubscribe in `src/Taskify.Web/Components/Pages/KanbanBoard.razor` per research.md R-011 §6–§7
 
 **Checkpoint**: User Story 4 fully functional. Verify: drag card → column updates immediately → second session reflects change within 3 s; drop to same column → no-op; LWW: concurrent moves → last writer wins.
 
@@ -141,13 +141,13 @@
 
 ### Tests for User Story 5 (write first — must FAIL before implementation)
 
-- [ ] T031a [US5] Write failing bUnit test for `TaskDetail.razor` — assert assignee dropdown renders all 5 users and `UpdateTaskAssigneeAsync` called on selection change, in `tests/Taskify.Web.Tests/Components/TaskDetailTests.cs` per research.md R-014
+- [X] T031a [US5] Write failing bUnit test for `TaskDetail.razor` — assert assignee dropdown renders all 5 users and `UpdateTaskAssigneeAsync` called on selection change, in `tests/Taskify.Web.Tests/Components/TaskDetailTests.cs` per research.md R-014
 
 ### Implementation for User Story 5
 
-- [ ] T031 [US5] Add `PATCH /api/tasks/{id}/assignee` endpoint to `src/Taskify.Api/Controllers/TasksController.cs` per contracts/rest-api.md (delegates to TaskService)
-- [ ] T032 [US5] Add `UpdateTaskAssigneeAsync(id, userId)` to `src/Taskify.Web/Services/ApiClient.cs` (`UpdateTaskStatusAsync` was added in T030a for Phase 6)
-- [ ] T033 [US5] Implement `TaskDetail.razor` — display task title, render assignee dropdown populated from `GetUsersAsync()`, call `UpdateTaskAssigneeAsync` on selection change, display current assignee in `src/Taskify.Web/Components/Pages/TaskDetail.razor` per spec.md US5 and plan.md Step 12e
+- [X] T031 [US5] Add `PATCH /api/tasks/{id}/assignee` endpoint to `src/Taskify.Api/Controllers/TasksController.cs` per contracts/rest-api.md (delegates to TaskService)
+- [X] T032 [US5] Add `UpdateTaskAssigneeAsync(id, userId)` to `src/Taskify.Web/Services/ApiClient.cs` (`UpdateTaskStatusAsync` was added in T030a for Phase 6)
+- [X] T033 [US5] Implement `TaskDetail.razor` — display task title, render assignee dropdown populated from `GetUsersAsync()`, call `UpdateTaskAssigneeAsync` on selection change, display current assignee in `src/Taskify.Web/Components/Pages/TaskDetail.razor` per spec.md US5 and plan.md Step 12e
 
 **Checkpoint**: User Story 5 fully functional. Verify: assignee picker shows all 5 users; selecting a user persists and reflects on the board card; re-assign replaces previous.
 
@@ -161,17 +161,17 @@
 
 ### Tests for User Story 6 (write first — must FAIL before implementation)
 
-- [ ] T034a [US6] Write failing integration tests for comment CRUD — assert `POST` adds comment attributed to author, `DELETE` by owner returns 204, `DELETE` by non-owner returns 403, in `tests/Taskify.Api.Tests/Controllers/CommentsControllerTests.cs` per contracts/rest-api.md
-- [ ] T034b [P] [US6] Write failing bUnit test for `CommentItem.razor` — assert edit/delete controls present only when `AuthorId == CurrentUser.Id`, absent for other users, in `tests/Taskify.Web.Tests/Components/CommentItemTests.cs` per research.md R-014
+- [X] T034a [US6] Write failing integration tests for comment CRUD — assert `POST` adds comment attributed to author, `DELETE` by owner returns 204, `DELETE` by non-owner returns 403, in `tests/Taskify.Api.Tests/Controllers/CommentsControllerTests.cs` per contracts/rest-api.md
+- [X] T034b [P] [US6] Write failing bUnit test for `CommentItem.razor` — assert edit/delete controls present only when `AuthorId == CurrentUser.Id`, absent for other users, in `tests/Taskify.Web.Tests/Components/CommentItemTests.cs` per research.md R-014
 
 ### Implementation for User Story 6
 
-- [ ] T034 [US6] Implement `CommentService` — `AddAsync`, `EditAsync`, `DeleteAsync` with ownership guard (`403` if `comment.AuthorId != requestingUserId`); broadcast `CommentAdded`/`CommentUpdated`/`CommentDeleted` events via `IHubContext<TaskifyHub>` in `src/Taskify.Api/Services/CommentService.cs` per contracts/signalr-hub.md and research.md R-013
-- [ ] T035 [P] [US6] Implement `CommentsController` — `GET /api/tasks/{id}/comments`, `POST /api/tasks/{id}/comments`, `PUT /api/tasks/{taskId}/comments/{id}`, `DELETE /api/tasks/{taskId}/comments/{id}` per contracts/rest-api.md CommentsController rows in `src/Taskify.Api/Controllers/CommentsController.cs`
-- [ ] T036 [P] [US6] Implement `NotificationsController` — `GET /api/users/{id}/notifications` and `PUT /api/users/{id}/notifications/{nId}/read` per contracts/rest-api.md in `src/Taskify.Api/Controllers/NotificationsController.cs`
-- [ ] T037 [US6] Add comment CRUD methods (`GetCommentsAsync`, `AddCommentAsync`, `EditCommentAsync`, `DeleteCommentAsync`) to `src/Taskify.Web/Services/ApiClient.cs`
-- [ ] T038 [P] [US6] Implement `CommentItem.razor` — display comment text, author name, timestamp, "edited" badge if `EditedAt != null`; render edit + delete controls only when `comment.AuthorId == IdentityService.CurrentUser.Id` in `src/Taskify.Web/Components/Pages/Shared/CommentItem.razor` per spec.md US6 and plan.md Step 12f
-- [ ] T039 [US6] Add comment thread section to `TaskDetail.razor` — render `<CommentItem>` per comment in chronological order, add-comment text input + submit button, wire edit/delete callbacks in `src/Taskify.Web/Components/Pages/TaskDetail.razor` per spec.md US6
+- [X] T034 [US6] Implement `CommentService` — `AddAsync`, `EditAsync`, `DeleteAsync` with ownership guard (`403` if `comment.AuthorId != requestingUserId`); broadcast `CommentAdded`/`CommentUpdated`/`CommentDeleted` events via `IHubContext<TaskifyHub>` in `src/Taskify.Api/Services/CommentService.cs` per contracts/signalr-hub.md and research.md R-013
+- [X] T035 [P] [US6] Implement `CommentsController` — `GET /api/tasks/{id}/comments`, `POST /api/tasks/{id}/comments`, `PUT /api/tasks/{taskId}/comments/{id}`, `DELETE /api/tasks/{taskId}/comments/{id}` per contracts/rest-api.md CommentsController rows in `src/Taskify.Api/Controllers/CommentsController.cs`
+- [X] T036 [P] [US6] Implement `NotificationsController` — `GET /api/users/{id}/notifications` and `PUT /api/users/{id}/notifications/{nId}/read` per contracts/rest-api.md in `src/Taskify.Api/Controllers/NotificationsController.cs`
+- [X] T037 [US6] Add comment CRUD methods (`GetCommentsAsync`, `AddCommentAsync`, `EditCommentAsync`, `DeleteCommentAsync`) to `src/Taskify.Web/Services/ApiClient.cs`
+- [X] T038 [P] [US6] Implement `CommentItem.razor` — display comment text, author name, timestamp, "edited" badge if `EditedAt != null`; render edit + delete controls only when `comment.AuthorId == IdentityService.CurrentUser.Id` in `src/Taskify.Web/Components/Pages/Shared/CommentItem.razor` per spec.md US6 and plan.md Step 12f
+- [X] T039 [US6] Add comment thread section to `TaskDetail.razor` — render `<CommentItem>` per comment in chronological order, add-comment text input + submit button, wire edit/delete callbacks in `src/Taskify.Web/Components/Pages/TaskDetail.razor` per spec.md US6
 
 **Checkpoint**: User Story 6 fully functional. Verify: unlimited comments accepted; edit/delete appears only on own comments across all 5 user identities; edited badge shown after edit.
 
@@ -181,12 +181,12 @@
 
 **Purpose**: Test coverage, performance validation, accessibility, and final code quality gates across all stories.
 
-- [ ] T040 [P] Write bUnit 2.x tests for all 6 Blazor components (`BunitContext`, `ctx.Render<T>()`, `SetupModule` for sortable-interop.js, `VerifyInvoke`, `DisposeComponentsAsync`) in `tests/Taskify.Web.Tests/Components/` per research.md R-014 and plan.md Step 15
-- [ ] T041 [P] Write Testcontainers.PostgreSQL integration tests for all 5 REST controller suites (users, projects, tasks, comments, notifications) covering happy paths + 403/404 cases in `tests/Taskify.Api.Tests/Controllers/` per contracts/rest-api.md and plan.md Step 16
-- [ ] T042 [P] Write SignalR hub integration test — connect two clients, `JoinBoard`, trigger `TaskMoved`, assert both clients receive `BoardUpdated` event in `tests/Taskify.Api.Tests/Hubs/TaskifyHubTests.cs` per contracts/signalr-hub.md and plan.md Step 16
-- [ ] T043 [P] Add BenchmarkDotNet API benchmarks (GET tasks, PATCH status baselines) in `tests/Taskify.Benchmarks/ApiBenchmarks.cs` per research.md R-008 and plan.md Step 17
-- [ ] T044 [P] Add Coverlet CI coverage gates (`--threshold 80` overall, `--threshold 95` for `Services/`) and integrate axe-core WCAG 2.1 AA accessibility check per plan.md Step 17 and research.md R-007
-- [ ] T045 Run `dotnet csharpier --check .` across all 8 projects; fix all formatting violations; confirm `dotnet build` passes with zero warnings per plan.md Step 18
+- [X] T040 [P] Write bUnit 2.x tests for all 6 Blazor components (`BunitContext`, `ctx.Render<T>()`, `SetupModule` for sortable-interop.js, `VerifyInvoke`, `DisposeComponentsAsync`) in `tests/Taskify.Web.Tests/Components/` per research.md R-014 and plan.md Step 15
+- [X] T041 [P] Write Testcontainers.PostgreSQL integration tests for all 5 REST controller suites (users, projects, tasks, comments, notifications) covering happy paths + 403/404 cases in `tests/Taskify.Api.Tests/Controllers/` per contracts/rest-api.md and plan.md Step 16
+- [X] T042 [P] Write SignalR hub integration test — connect two clients, `JoinBoard`, trigger `TaskMoved`, assert both clients receive `BoardUpdated` event in `tests/Taskify.Api.Tests/Hubs/TaskifyHubTests.cs` per contracts/signalr-hub.md and plan.md Step 16
+- [X] T043 [P] Add BenchmarkDotNet API benchmarks (GET tasks, PATCH status baselines) in `tests/Taskify.Benchmarks/ApiBenchmarks.cs` per research.md R-008 and plan.md Step 17
+- [X] T044 [P] Add Coverlet CI coverage gates (`--threshold 80` overall, `--threshold 95` for `Services/`) and integrate axe-core WCAG 2.1 AA accessibility check per plan.md Step 17 and research.md R-007
+- [X] T045 Run `dotnet csharpier --check .` across all 8 projects; fix all formatting violations; confirm `dotnet build` passes with zero warnings per plan.md Step 18
 
 **Checkpoint**: All tests green; coverage thresholds met; axe-core reports zero violations; benchmark baselines within p95 targets; CSharpier check passes in CI.
 

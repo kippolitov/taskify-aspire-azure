@@ -1,0 +1,47 @@
+@inject IdentityService Identity
+
+<div
+    class="task-card @CardCssClass"
+    data-task-id="@Task.Id"
+    tabindex="0"
+    role="button"
+    aria-label="@AriaLabel"
+    @onclick="OnClick"
+    @onkeydown="HandleKeyDown">
+    <div class="task-card__title">@Task.Title</div>
+    <div class="task-card__assignee">
+        @if (Task.Assignee is not null)
+        {
+            <span>👤 @Task.Assignee.DisplayName</span>
+        }
+        else
+        {
+            <span class="text-muted">Unassigned</span>
+        }
+    </div>
+    <div class="task-card__meta">
+        <span>@Task.CommentCount comment@(Task.CommentCount == 1 ? "" : "s")</span>
+        <span>@Task.UpdatedAt.ToString("MMM d")</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TaskDto Task { get; set; } = null!;
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private bool IsMine =>
+        Identity.IsAuthenticated && Task.Assignee?.Id == Identity.CurrentUser!.Id;
+
+    private string CardCssClass => IsMine ? "task-card--mine" : string.Empty;
+
+    private string AriaLabel =>
+        Task.Assignee is not null
+            ? $"{Task.Title}, assigned to {Task.Assignee.DisplayName}"
+            : $"{Task.Title}, unassigned";
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+            await OnClick.InvokeAsync();
+    }
+}

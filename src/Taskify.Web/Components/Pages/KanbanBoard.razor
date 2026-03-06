@@ -1,0 +1,258 @@
+@page "/board/{ProjectId:int}"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject ApiClient Api
+@inject IdentityService Identity
+@inject BoardHubClient Hub
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>@(_project?.Name ?? "Board") — Taskify</PageTitle>
+
+@if (!Identity.IsAuthenticated)
+{
+    <RedirectToHome />
+}
+else
+{
+    <div class="d-flex align-items-center px-3 py-2 border-bottom">
+        <a href="/projects" class="btn btn-sm btn-outline-secondary me-3" aria-label="Back to projects">
+            ← Projects
+        </a>
+        @if (_project is not null)
+        {
+            <h2 class="mb-0 h5">@_project.Name</h2>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status" aria-label="Loading board"></div>
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger m-3" role="alert">@_error</div>
+    }
+    else
+    {
+        <div class="kanban-board" aria-label="Kanban board">
+            @foreach (var column in Columns)
+            {
+                <div class="kanban-column" aria-label="@column.Label column">
+                    <div class="kanban-column__header">
+                        @column.Label
+                        <span class="badge bg-secondary ms-1">@TasksForColumn(column.Status).Count</span>
+                    </div>
+                    <div
+                        class="kanban-column__cards"
+                        data-column="@column.Status"
+                        @ref="_columnRefs[column.Status]"
+                        aria-label="@column.Label tasks">
+                        @foreach (var task in TasksForColumn(column.Status))
+                        {
+                            <TaskCard Task="task" OnClick="() => OpenTaskDetail(task)" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (_selectedTask is not null)
+        {
+            <TaskDetail
+                Task="_selectedTask"
+                ProjectId="ProjectId"
+                AllUsers="_users"
+                OnClose="CloseTaskDetail"
+                OnTaskUpdated="HandleTaskUpdated" />
+        }
+    }
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    private static readonly (ColumnStatus Status, string Label)[] Columns =
+    [
+        (ColumnStatus.ToDo, "To Do"),
+        (ColumnStatus.InProgress, "In Progress"),
+        (ColumnStatus.InReview, "In Review"),
+        (ColumnStatus.Done, "Done"),
+    ];
+
+    private ProjectDto? _project;
+    private List<TaskDto> _tasks = [];
+    private List<UserDto> _users = [];
+    private TaskDto? _selectedTask;
+    private bool _loading = true;
+    private string? _error;
+
+    private readonly Dictionary<ColumnStatus, ElementReference> _columnRefs = [];
+    private DotNetObjectReference<KanbanBoard>? _dotnetRef;
+
+    protected override void OnInitialized()
+    {
+        foreach (var (status, _) in Columns)
+            _columnRefs[status] = default;
+
+        Hub.OnTaskMoved += HandleTaskMovedSignalR;
+        Hub.OnTaskAssigned += HandleTaskAssignedSignalR;
+        Hub.OnTaskCreated += HandleTaskCreatedSignalR;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Identity.IsAuthenticated)
+            return;
+
+        try
+        {
+            var projectTask = Api.GetProjectAsync(ProjectId);
+            var tasksTask = Api.GetProjectTasksAsync(ProjectId);
+            var usersTask = Api.GetUsersAsync();
+
+            await Task.WhenAll(projectTask, tasksTask, usersTask);
+
+            _project = await projectTask;
+            _tasks = await tasksTask ?? [];
+            _users = await usersTask ?? [];
+
+            if (_project is null)
+                _error = "Project not found.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load board: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_loading && _error is null)
+        {
+            _dotnetRef = DotNetObjectReference.Create(this);
+            foreach (var (status, _) in Columns)
+            {
+                var el = _columnRefs[status];
+                await JS.InvokeVoidAsync(
+                    "sortableInterop.init",
+                    el,
+                    _dotnetRef,
+                    status.ToString()
+                );
+            }
+
+            try
+            {
+                await Hub.StartAsync(ProjectId);
+            }
+            catch
+            {
+                // Ignore hub connection failures (e.g., during tests or offline)
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnTaskDropped(string taskId, string fromCol, string toCol)
+    {
+        if (
+            !int.TryParse(taskId, out var id)
+            || !Enum.TryParse<ColumnStatus>(toCol, out var newStatus)
+        )
+            return;
+
+        var updated = await Api.MoveTaskAsync(id, newStatus);
+        if (updated is not null)
+        {
+            UpdateTask(updated);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private List<TaskDto> TasksForColumn(ColumnStatus status) =>
+        _tasks.Where(t => t.Status == status).OrderBy(t => t.Id).ToList();
+
+    private void OpenTaskDetail(TaskDto task) => _selectedTask = task;
+
+    private void CloseTaskDetail() => _selectedTask = null;
+
+    private void HandleTaskUpdated(TaskDto updated)
+    {
+        UpdateTask(updated);
+        _selectedTask = updated;
+    }
+
+    private void UpdateTask(TaskDto updated)
+    {
+        var idx = _tasks.FindIndex(t => t.Id == updated.Id);
+        if (idx >= 0)
+            _tasks[idx] = updated;
+        else
+            _tasks.Add(updated);
+    }
+
+    // ── SignalR handlers (must InvokeAsync StateHasChanged) ──────────────
+
+    private async Task HandleTaskMovedSignalR(
+        int taskId,
+        string fromStatus,
+        string toStatus,
+        DateTimeOffset movedAt
+    )
+    {
+        if (!Enum.TryParse<ColumnStatus>(toStatus, out var status))
+            return;
+
+        var idx = _tasks.FindIndex(t => t.Id == taskId);
+        if (idx >= 0)
+            _tasks[idx] = _tasks[idx] with { Status = status, UpdatedAt = movedAt };
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleTaskAssignedSignalR(int taskId, UserDto? assignee)
+    {
+        var idx = _tasks.FindIndex(t => t.Id == taskId);
+        if (idx >= 0)
+            _tasks[idx] = _tasks[idx] with { Assignee = assignee, UpdatedAt = DateTimeOffset.UtcNow };
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleTaskCreatedSignalR(TaskDto task)
+    {
+        if (!_tasks.Any(t => t.Id == task.Id))
+            _tasks.Add(task);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.OnTaskMoved -= HandleTaskMovedSignalR;
+        Hub.OnTaskAssigned -= HandleTaskAssignedSignalR;
+        Hub.OnTaskCreated -= HandleTaskCreatedSignalR;
+
+        foreach (var (status, _) in Columns)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("sortableInterop.dispose", _columnRefs[status]);
+            }
+            catch
+            {
+                // JS may be gone on dispose
+            }
+        }
+
+        await Hub.StopAsync();
+        _dotnetRef?.Dispose();
+    }
+}
