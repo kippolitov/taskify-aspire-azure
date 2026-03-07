@@ -127,8 +127,8 @@ public class KanbanBoardDragTests : BunitContext
         Assert.Contains("Set up CI pipeline", inProgressColumn.TextContent);
 
         var headers = cut.FindAll(".kanban-column__header");
-        Assert.Contains("To Do0", headers[0].TextContent.Replace(" ", string.Empty));
-        Assert.Contains("In Progress2", headers[1].TextContent.Replace(" ", string.Empty));
+        Assert.Contains("ToDo0", System.Text.RegularExpressions.Regex.Replace(headers[0].TextContent, @"\s+", string.Empty));
+        Assert.Contains("InProgress2", System.Text.RegularExpressions.Regex.Replace(headers[1].TextContent, @"\s+", string.Empty));
 
         await dropTask;
     }
