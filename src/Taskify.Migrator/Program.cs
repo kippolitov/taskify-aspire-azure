@@ -7,8 +7,9 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.AddServiceDefaults();
 
 var connectionString =
-    builder.Configuration.GetConnectionString("taskifydb")
-    ?? throw new InvalidOperationException("Connection string 'taskifydb' was not found.");
+    builder.Configuration.GetConnectionString("DefaultConnection") // Azure Container Apps
+    ?? builder.Configuration.GetConnectionString("taskifydb") // Local Aspire
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' or 'taskifydb' was not found.");
 
 builder.Services.AddDbContext<TaskifyDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention()

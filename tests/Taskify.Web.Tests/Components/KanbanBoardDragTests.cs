@@ -29,7 +29,9 @@ public class KanbanBoardDragTests : BunitContext
             foreach (var (pattern, json) in _responses)
             {
                 if (!path.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                {
                     continue;
+                }
 
                 if (_delayMs > 0 && request.Method == HttpMethod.Patch)
                 {
@@ -50,7 +52,7 @@ public class KanbanBoardDragTests : BunitContext
         }
     }
 
-    private IRenderedComponent<KanbanBoard> RenderBoard()
+    private async Task<IRenderedComponent<KanbanBoard>> RenderBoardAsync()
     {
         // Task 1 starts in the first column; the PATCH endpoint returns it as InProgress
         var movedTask = TestData.SampleTasks[0] with
@@ -80,7 +82,7 @@ public class KanbanBoardDragTests : BunitContext
 
         JSInterop.Mode = JSRuntimeMode.Loose;
         var cut = Render<KanbanBoard>(p => p.Add(b => b.ProjectId, 1));
-        cut.WaitForElement(".kanban-board", TimeSpan.FromSeconds(3));
+        await cut.WaitForElementAsync(".kanban-board", TimeSpan.FromSeconds(3));
         return cut;
     }
 
@@ -112,7 +114,7 @@ public class KanbanBoardDragTests : BunitContext
 
         JSInterop.Mode = JSRuntimeMode.Loose;
         var cut = Render<KanbanBoard>(p => p.Add(b => b.ProjectId, 1));
-        cut.WaitForElement(".kanban-board", TimeSpan.FromSeconds(3));
+        await cut.WaitForElementAsync(".kanban-board", TimeSpan.FromSeconds(3));
 
         var dropTask = cut.InvokeAsync(() => cut.Instance.OnTaskDropped("1", "ToDo", "InProgress"));
 
@@ -125,8 +127,8 @@ public class KanbanBoardDragTests : BunitContext
         Assert.Contains("Set up CI pipeline", inProgressColumn.TextContent);
 
         var headers = cut.FindAll(".kanban-column__header");
-        Assert.Contains("To Do0", headers[0].TextContent.Replace(" ", string.Empty));
-        Assert.Contains("In Progress2", headers[1].TextContent.Replace(" ", string.Empty));
+        Assert.Contains("ToDo0", System.Text.RegularExpressions.Regex.Replace(headers[0].TextContent, @"\s+", string.Empty));
+        Assert.Contains("InProgress2", System.Text.RegularExpressions.Regex.Replace(headers[1].TextContent, @"\s+", string.Empty));
 
         await dropTask;
     }
@@ -134,7 +136,7 @@ public class KanbanBoardDragTests : BunitContext
     [Fact]
     public async Task OnTaskDropped_ValidMove_TaskMovesToTargetColumn()
     {
-        var cut = RenderBoard();
+        var cut = await RenderBoardAsync();
 
         // Drag task 1 from the first column to InProgress
         await cut.InvokeAsync(() => cut.Instance.OnTaskDropped("1", "ToDo", "InProgress"));
@@ -147,7 +149,7 @@ public class KanbanBoardDragTests : BunitContext
     [Fact]
     public async Task OnTaskDropped_InvalidTaskId_DoesNotThrow()
     {
-        var cut = RenderBoard();
+        var cut = await RenderBoardAsync();
 
         // A non-numeric task id should be silently ignored
         await cut.InvokeAsync(() =>
@@ -161,7 +163,7 @@ public class KanbanBoardDragTests : BunitContext
     [Fact]
     public async Task OnTaskDropped_InvalidToColumn_DoesNotThrow()
     {
-        var cut = RenderBoard();
+        var cut = await RenderBoardAsync();
 
         // Invalid column name should be silently ignored
         await cut.InvokeAsync(() => cut.Instance.OnTaskDropped("1", "ToDo", "NotAColumn"));
@@ -172,7 +174,7 @@ public class KanbanBoardDragTests : BunitContext
     [Fact]
     public async Task OnTaskDropped_SameColumn_DoesNotDuplicate()
     {
-        var cut = RenderBoard();
+        var cut = await RenderBoardAsync();
 
         // Drop to the same column the task is already in (no-op)
         await cut.InvokeAsync(() => cut.Instance.OnTaskDropped("1", "ToDo", "ToDo"));

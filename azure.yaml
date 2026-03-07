@@ -1,0 +1,45 @@
+name: taskify
+metadata:
+  template: aspire-starter@0.0.1
+
+# Resource tags (populated dynamically by azd)
+tags:
+  azd-env-name: ${AZURE_ENV_NAME}
+  project: taskify
+  managed-by: azd
+
+services:
+  # API Backend
+  api:
+    project: src/Taskify.Api
+    language: dotnet
+    host: containerapp
+    docker:
+      path: src/Taskify.Api/Dockerfile
+      context: .
+
+  # Web Frontend
+  web:
+    project: src/Taskify.Web
+    language: dotnet
+    host: containerapp
+    docker:
+      path: src/Taskify.Web/Dockerfile
+      context: .
+
+# Infrastructure template
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+# Hooks for lifecycle events
+hooks:
+  predeploy:
+    posix:
+      shell: sh
+      run: bash ./infra/hooks/predeploy.sh
+  postdeploy:
+    posix:
+      shell: sh
+      run: bash ./infra/hooks/postdeploy.sh
