@@ -1,0 +1,195 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "15876414050839525055"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Environment name (dev, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources"
+      }
+    },
+    "uniqueId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 8,
+      "metadata": {
+        "description": "Unique identifier suffix to prevent naming conflicts"
+      }
+    },
+    "administratorLogin": {
+      "type": "string",
+      "defaultValue": "taskifyadmin",
+      "metadata": {
+        "description": "PostgreSQL administrator username"
+      }
+    },
+    "administratorPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "PostgreSQL administrator password"
+      }
+    },
+    "skuName": {
+      "type": "string",
+      "defaultValue": "Standard_B1ms",
+      "allowedValues": [
+        "Standard_B1ms",
+        "Standard_B2s",
+        "Standard_D2s_v3",
+        "Standard_D4s_v3"
+      ],
+      "metadata": {
+        "description": "PostgreSQL SKU name"
+      }
+    },
+    "tier": {
+      "type": "string",
+      "defaultValue": "Burstable",
+      "allowedValues": [
+        "Burstable",
+        "GeneralPurpose",
+        "MemoryOptimized"
+      ],
+      "metadata": {
+        "description": "PostgreSQL tier"
+      }
+    },
+    "storageSizeGB": {
+      "type": "int",
+      "defaultValue": 32,
+      "minValue": 32,
+      "maxValue": 16384,
+      "metadata": {
+        "description": "PostgreSQL storage size in GB"
+      }
+    },
+    "version": {
+      "type": "string",
+      "defaultValue": "16",
+      "metadata": {
+        "description": "PostgreSQL version"
+      }
+    },
+    "highAvailabilityMode": {
+      "type": "string",
+      "defaultValue": "Disabled",
+      "allowedValues": [
+        "Disabled",
+        "ZoneRedundant"
+      ],
+      "metadata": {
+        "description": "PostgreSQL high availability mode"
+      }
+    },
+    "backupRetentionDays": {
+      "type": "int",
+      "defaultValue": 7,
+      "minValue": 7,
+      "maxValue": 35,
+      "metadata": {
+        "description": "PostgreSQL backup retention days"
+      }
+    }
+  },
+  "resources": {
+    "postgresqlServer": {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('skuName')]",
+        "tier": "[parameters('tier')]"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('administratorLogin')]",
+        "administratorLoginPassword": "[parameters('administratorPassword')]",
+        "version": "[parameters('version')]",
+        "storage": {
+          "storageSizeGB": "[parameters('storageSizeGB')]"
+        },
+        "backup": {
+          "backupRetentionDays": "[parameters('backupRetentionDays')]",
+          "geoRedundantBackup": "[if(equals(parameters('environmentName'), 'prod'), 'Enabled', 'Disabled')]"
+        },
+        "highAvailability": {
+          "mode": "[parameters('highAvailabilityMode')]"
+        },
+        "network": {
+          "publicNetworkAccess": "Enabled"
+        }
+      }
+    },
+    "postgresqlDatabase": {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/{1}', format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')), 'taskify')]",
+      "properties": {
+        "charset": "UTF8",
+        "collation": "en_US.utf8"
+      },
+      "dependsOn": [
+        "postgresqlServer"
+      ]
+    },
+    "postgresqlFirewallRule": {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/{1}', format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')), 'AllowAzureServices')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "postgresqlServer"
+      ]
+    }
+  },
+  "outputs": {
+    "postgresqlServerFqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "PostgreSQL server FQDN"
+      },
+      "value": "[reference('postgresqlServer').fullyQualifiedDomainName]"
+    },
+    "postgresqlServerName": {
+      "type": "string",
+      "metadata": {
+        "description": "PostgreSQL server name"
+      },
+      "value": "[format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]"
+    },
+    "postgresqlDatabaseName": {
+      "type": "string",
+      "metadata": {
+        "description": "PostgreSQL database name"
+      },
+      "value": "taskify"
+    },
+    "postgresqlConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "PostgreSQL connection string for EF Core"
+      },
+      "value": "[format('Host={0};Database={1};Username={2};Password={3};SSL Mode=Require;Trust Server Certificate=true', reference('postgresqlServer').fullyQualifiedDomainName, 'taskify', parameters('administratorLogin'), parameters('administratorPassword'))]"
+    }
+  }
+}

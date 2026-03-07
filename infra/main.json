@@ -1,0 +1,1417 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "15349984853478628426"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Environment name (dev, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources"
+      }
+    },
+    "uniqueId": {
+      "type": "string",
+      "defaultValue": "[substring(uniqueString(resourceGroup().id), 0, 8)]",
+      "minLength": 3,
+      "maxLength": 8,
+      "metadata": {
+        "description": "Unique identifier suffix to prevent naming conflicts (generated from subscription ID hash or timestamp)"
+      }
+    },
+    "containerAppCpu": {
+      "type": "string",
+      "defaultValue": "0.25",
+      "metadata": {
+        "description": "Container App CPU allocation (0.25, 0.5, 1.0, 2.0, 4.0)"
+      }
+    },
+    "containerAppMemory": {
+      "type": "string",
+      "defaultValue": "0.5Gi",
+      "metadata": {
+        "description": "Container App memory allocation (0.5Gi, 1Gi, 2Gi, 4Gi, 8Gi)"
+      }
+    },
+    "containerAppMinReplicas": {
+      "type": "int",
+      "defaultValue": 0,
+      "minValue": 0,
+      "maxValue": 30,
+      "metadata": {
+        "description": "Minimum replicas for Container Apps (0 = scale to zero)"
+      }
+    },
+    "containerAppMaxReplicas": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 1,
+      "maxValue": 30,
+      "metadata": {
+        "description": "Maximum replicas for Container Apps"
+      }
+    },
+    "postgresqlSkuName": {
+      "type": "string",
+      "defaultValue": "Standard_B1ms",
+      "allowedValues": [
+        "Standard_B1ms",
+        "Standard_B2s",
+        "Standard_D2s_v3",
+        "Standard_D4s_v3"
+      ],
+      "metadata": {
+        "description": "PostgreSQL SKU name"
+      }
+    },
+    "postgresqlTier": {
+      "type": "string",
+      "defaultValue": "Burstable",
+      "allowedValues": [
+        "Burstable",
+        "GeneralPurpose",
+        "MemoryOptimized"
+      ],
+      "metadata": {
+        "description": "PostgreSQL tier"
+      }
+    },
+    "postgresqlStorageGB": {
+      "type": "int",
+      "defaultValue": 32,
+      "minValue": 32,
+      "maxValue": 16384,
+      "metadata": {
+        "description": "PostgreSQL storage size in GB"
+      }
+    },
+    "postgresqlVersion": {
+      "type": "string",
+      "defaultValue": "16",
+      "metadata": {
+        "description": "PostgreSQL version"
+      }
+    },
+    "postgresqlHighAvailability": {
+      "type": "string",
+      "defaultValue": "Disabled",
+      "allowedValues": [
+        "Disabled",
+        "ZoneRedundant"
+      ],
+      "metadata": {
+        "description": "PostgreSQL high availability mode"
+      }
+    },
+    "postgresqlBackupRetentionDays": {
+      "type": "int",
+      "defaultValue": 7,
+      "minValue": 7,
+      "maxValue": 35,
+      "metadata": {
+        "description": "PostgreSQL backup retention days"
+      }
+    },
+    "taskifyApiImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/dotnet/samples:aspnetapp",
+      "metadata": {
+        "description": "Container image for Taskify.Api"
+      }
+    },
+    "taskifyWebImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/dotnet/samples:aspnetapp",
+      "metadata": {
+        "description": "Container image for Taskify.Web"
+      }
+    },
+    "postgresqlAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "PostgreSQL administrator password"
+      }
+    },
+    "enableVNetIntegration": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable VNet integration (recommended for production)"
+      }
+    }
+  },
+  "resources": {
+    "networking": {
+      "condition": "[parameters('enableVNetIntegration')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "networking",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "uniqueId": {
+            "value": "[parameters('uniqueId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "4056565517195659358"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "metadata": {
+                "description": "Environment name (dev, prod)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "uniqueId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 8,
+              "metadata": {
+                "description": "Unique identifier suffix to prevent naming conflicts"
+              }
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16",
+              "metadata": {
+                "description": "Virtual Network address prefix"
+              }
+            },
+            "containerAppsSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/23",
+              "metadata": {
+                "description": "Container Apps subnet address prefix"
+              }
+            },
+            "postgresqlSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.2.0/24",
+              "metadata": {
+                "description": "PostgreSQL subnet address prefix"
+              }
+            },
+            "privateEndpointsSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.3.0/24",
+              "metadata": {
+                "description": "Private endpoints subnet address prefix"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-11-01",
+              "name": "[format('vnet-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "snet-container-apps",
+                    "properties": {
+                      "addressPrefix": "[parameters('containerAppsSubnetPrefix')]",
+                      "delegations": [
+                        {
+                          "name": "Microsoft.App.environments",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Disabled"
+                    }
+                  },
+                  {
+                    "name": "snet-postgresql",
+                    "properties": {
+                      "addressPrefix": "[parameters('postgresqlSubnetPrefix')]",
+                      "delegations": [
+                        {
+                          "name": "Microsoft.DBforPostgreSQL.flexibleServers",
+                          "properties": {
+                            "serviceName": "Microsoft.DBforPostgreSQL/flexibleServers"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "snet-private-endpoints",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointsSubnetPrefix')]",
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[format('nsg-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowHttpsInbound",
+                    "properties": {
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "Internet",
+                      "destinationAddressPrefix": "*",
+                      "description": "Allow HTTPS from Internet"
+                    }
+                  },
+                  {
+                    "name": "AllowHttpInbound",
+                    "properties": {
+                      "priority": 110,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "80",
+                      "sourceAddressPrefix": "Internet",
+                      "destinationAddressPrefix": "*",
+                      "description": "Allow HTTP from Internet (redirects to HTTPS)"
+                    }
+                  },
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "priority": 4096,
+                      "direction": "Inbound",
+                      "access": "Deny",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "*",
+                      "destinationAddressPrefix": "*",
+                      "description": "Deny all other inbound traffic"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Network resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', format('vnet-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Network name"
+              },
+              "value": "[format('vnet-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]"
+            },
+            "containerAppsSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps subnet resource ID"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2023-11-01').subnets[0].id]"
+            },
+            "postgresqlSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "PostgreSQL subnet resource ID"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2023-11-01').subnets[1].id]"
+            },
+            "privateEndpointsSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Private endpoints subnet resource ID"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2023-11-01').subnets[2].id]"
+            },
+            "nsgId": {
+              "type": "string",
+              "metadata": {
+                "description": "Network Security Group resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', format('nsg-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+            },
+            "nsgName": {
+              "type": "string",
+              "metadata": {
+                "description": "Network Security Group name"
+              },
+              "value": "[format('nsg-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]"
+            }
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "monitoring",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "uniqueId": {
+            "value": "[parameters('uniqueId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "14851099468532393691"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "metadata": {
+                "description": "Environment name (dev, prod)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "uniqueId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 8,
+              "metadata": {
+                "description": "Unique identifier suffix to prevent naming conflicts"
+              }
+            },
+            "budgetAlertEmails": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Email addresses for budget alerts (comma-separated)"
+              }
+            }
+          },
+          "resources": {
+            "logAnalyticsWorkspace": {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[format('law-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 90
+              }
+            },
+            "applicationInsights": {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[format('appi-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('law-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]",
+                "RetentionInDays": 90,
+                "SamplingPercentage": 100
+              },
+              "dependsOn": [
+                "logAnalyticsWorkspace"
+              ]
+            },
+            "budgetActionGroup": {
+              "condition": "[not(equals(parameters('budgetAlertEmails'), ''))]",
+              "type": "Microsoft.Insights/actionGroups",
+              "apiVersion": "2023-01-01",
+              "name": "[format('ag-budget-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "global",
+              "properties": {
+                "copy": [
+                  {
+                    "name": "emailReceivers",
+                    "count": "[length(split(parameters('budgetAlertEmails'), ','))]",
+                    "input": {
+                      "name": "[format('Email-{0}', replace(split(parameters('budgetAlertEmails'), ',')[copyIndex('emailReceivers')], '@', '-at-'))]",
+                      "emailAddress": "[trim(split(parameters('budgetAlertEmails'), ',')[copyIndex('emailReceivers')])]",
+                      "useCommonAlertSchema": true
+                    }
+                  }
+                ],
+                "groupShortName": "BudgetAlert",
+                "enabled": true
+              }
+            }
+          },
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace resource ID"
+              },
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', format('law-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+            },
+            "logAnalyticsWorkspaceCustomerId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace customer ID"
+              },
+              "value": "[reference('logAnalyticsWorkspace').customerId]"
+            },
+            "applicationInsightsConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Application Insights connection string"
+              },
+              "value": "[reference('applicationInsights').ConnectionString]"
+            },
+            "applicationInsightsInstrumentationKey": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights instrumentation key (legacy)"
+              },
+              "value": "[reference('applicationInsights').InstrumentationKey]"
+            }
+          }
+        }
+      }
+    },
+    "containerRegistry": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "containerRegistry",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "uniqueId": {
+            "value": "[parameters('uniqueId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "9008527461541294424"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "metadata": {
+                "description": "Environment name (dev, prod)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "uniqueId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 8,
+              "metadata": {
+                "description": "Unique identifier suffix to prevent naming conflicts"
+              }
+            }
+          },
+          "resources": {
+            "containerRegistry": {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-11-01-preview",
+              "name": "[format('acrtaskify{0}{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[if(equals(parameters('environmentName'), 'prod'), 'Standard', 'Basic')]"
+              },
+              "properties": {
+                "adminUserEnabled": true,
+                "publicNetworkAccess": "Enabled",
+                "zoneRedundancy": "[if(equals(parameters('environmentName'), 'prod'), 'Enabled', 'Disabled')]"
+              }
+            }
+          },
+          "outputs": {
+            "containerRegistryId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry resource ID"
+              },
+              "value": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrtaskify{0}{1}', parameters('environmentName'), parameters('uniqueId')))]"
+            },
+            "containerRegistryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry name"
+              },
+              "value": "[format('acrtaskify{0}{1}', parameters('environmentName'), parameters('uniqueId'))]"
+            },
+            "containerRegistryLoginServer": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry login server"
+              },
+              "value": "[reference('containerRegistry').loginServer]"
+            },
+            "containerRegistryEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry endpoint (without https://, azd adds it)"
+              },
+              "value": "[reference('containerRegistry').loginServer]"
+            },
+            "containerRegistryUsername": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry admin username"
+              },
+              "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', format('acrtaskify{0}{1}', parameters('environmentName'), parameters('uniqueId'))), '2023-11-01-preview').username]"
+            },
+            "containerRegistryPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Container Registry admin password"
+              },
+              "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', format('acrtaskify{0}{1}', parameters('environmentName'), parameters('uniqueId'))), '2023-11-01-preview').passwords[0].value]"
+            }
+          }
+        }
+      }
+    },
+    "postgresql": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "postgresql",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "uniqueId": {
+            "value": "[parameters('uniqueId')]"
+          },
+          "administratorLogin": {
+            "value": "taskifyadmin"
+          },
+          "administratorPassword": {
+            "value": "[parameters('postgresqlAdminPassword')]"
+          },
+          "skuName": {
+            "value": "[parameters('postgresqlSkuName')]"
+          },
+          "tier": {
+            "value": "[parameters('postgresqlTier')]"
+          },
+          "storageSizeGB": {
+            "value": "[parameters('postgresqlStorageGB')]"
+          },
+          "version": {
+            "value": "[parameters('postgresqlVersion')]"
+          },
+          "highAvailabilityMode": {
+            "value": "[parameters('postgresqlHighAvailability')]"
+          },
+          "backupRetentionDays": {
+            "value": "[parameters('postgresqlBackupRetentionDays')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "15876414050839525055"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "metadata": {
+                "description": "Environment name (dev, prod)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "uniqueId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 8,
+              "metadata": {
+                "description": "Unique identifier suffix to prevent naming conflicts"
+              }
+            },
+            "administratorLogin": {
+              "type": "string",
+              "defaultValue": "taskifyadmin",
+              "metadata": {
+                "description": "PostgreSQL administrator username"
+              }
+            },
+            "administratorPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "PostgreSQL administrator password"
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "defaultValue": "Standard_B1ms",
+              "allowedValues": [
+                "Standard_B1ms",
+                "Standard_B2s",
+                "Standard_D2s_v3",
+                "Standard_D4s_v3"
+              ],
+              "metadata": {
+                "description": "PostgreSQL SKU name"
+              }
+            },
+            "tier": {
+              "type": "string",
+              "defaultValue": "Burstable",
+              "allowedValues": [
+                "Burstable",
+                "GeneralPurpose",
+                "MemoryOptimized"
+              ],
+              "metadata": {
+                "description": "PostgreSQL tier"
+              }
+            },
+            "storageSizeGB": {
+              "type": "int",
+              "defaultValue": 32,
+              "minValue": 32,
+              "maxValue": 16384,
+              "metadata": {
+                "description": "PostgreSQL storage size in GB"
+              }
+            },
+            "version": {
+              "type": "string",
+              "defaultValue": "16",
+              "metadata": {
+                "description": "PostgreSQL version"
+              }
+            },
+            "highAvailabilityMode": {
+              "type": "string",
+              "defaultValue": "Disabled",
+              "allowedValues": [
+                "Disabled",
+                "ZoneRedundant"
+              ],
+              "metadata": {
+                "description": "PostgreSQL high availability mode"
+              }
+            },
+            "backupRetentionDays": {
+              "type": "int",
+              "defaultValue": 7,
+              "minValue": 7,
+              "maxValue": 35,
+              "metadata": {
+                "description": "PostgreSQL backup retention days"
+              }
+            }
+          },
+          "resources": {
+            "postgresqlServer": {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+              "apiVersion": "2023-12-01-preview",
+              "name": "[format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('skuName')]",
+                "tier": "[parameters('tier')]"
+              },
+              "properties": {
+                "administratorLogin": "[parameters('administratorLogin')]",
+                "administratorLoginPassword": "[parameters('administratorPassword')]",
+                "version": "[parameters('version')]",
+                "storage": {
+                  "storageSizeGB": "[parameters('storageSizeGB')]"
+                },
+                "backup": {
+                  "backupRetentionDays": "[parameters('backupRetentionDays')]",
+                  "geoRedundantBackup": "[if(equals(parameters('environmentName'), 'prod'), 'Enabled', 'Disabled')]"
+                },
+                "highAvailability": {
+                  "mode": "[parameters('highAvailabilityMode')]"
+                },
+                "network": {
+                  "publicNetworkAccess": "Enabled"
+                }
+              }
+            },
+            "postgresqlDatabase": {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+              "apiVersion": "2023-12-01-preview",
+              "name": "[format('{0}/{1}', format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')), 'taskify')]",
+              "properties": {
+                "charset": "UTF8",
+                "collation": "en_US.utf8"
+              },
+              "dependsOn": [
+                "postgresqlServer"
+              ]
+            },
+            "postgresqlFirewallRule": {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+              "apiVersion": "2023-12-01-preview",
+              "name": "[format('{0}/{1}', format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')), 'AllowAzureServices')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "postgresqlServer"
+              ]
+            }
+          },
+          "outputs": {
+            "postgresqlServerFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "PostgreSQL server FQDN"
+              },
+              "value": "[reference('postgresqlServer').fullyQualifiedDomainName]"
+            },
+            "postgresqlServerName": {
+              "type": "string",
+              "metadata": {
+                "description": "PostgreSQL server name"
+              },
+              "value": "[format('psql-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]"
+            },
+            "postgresqlDatabaseName": {
+              "type": "string",
+              "metadata": {
+                "description": "PostgreSQL database name"
+              },
+              "value": "taskify"
+            },
+            "postgresqlConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "PostgreSQL connection string for EF Core"
+              },
+              "value": "[format('Host={0};Database={1};Username={2};Password={3};SSL Mode=Require;Trust Server Certificate=true', reference('postgresqlServer').fullyQualifiedDomainName, 'taskify', parameters('administratorLogin'), parameters('administratorPassword'))]"
+            }
+          }
+        }
+      }
+    },
+    "containerApps": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "containerApps",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "uniqueId": {
+            "value": "[parameters('uniqueId')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference('monitoring').outputs.logAnalyticsWorkspaceId.value]"
+          },
+          "logAnalyticsWorkspaceCustomerId": {
+            "value": "[reference('monitoring').outputs.logAnalyticsWorkspaceCustomerId.value]"
+          },
+          "applicationInsightsConnectionString": {
+            "value": "[listOutputsWithSecureValues('monitoring', '2025-04-01').applicationInsightsConnectionString]"
+          },
+          "taskifyApiImage": {
+            "value": "[parameters('taskifyApiImage')]"
+          },
+          "taskifyWebImage": {
+            "value": "[parameters('taskifyWebImage')]"
+          },
+          "cpu": {
+            "value": "[parameters('containerAppCpu')]"
+          },
+          "memory": {
+            "value": "[parameters('containerAppMemory')]"
+          },
+          "minReplicas": {
+            "value": "[parameters('containerAppMinReplicas')]"
+          },
+          "maxReplicas": {
+            "value": "[parameters('containerAppMaxReplicas')]"
+          },
+          "postgresqlConnectionString": {
+            "value": "[listOutputsWithSecureValues('postgresql', '2025-04-01').postgresqlConnectionString]"
+          },
+          "containerRegistryLoginServer": {
+            "value": "[reference('containerRegistry').outputs.containerRegistryLoginServer.value]"
+          },
+          "containerRegistryUsername": {
+            "value": "[reference('containerRegistry').outputs.containerRegistryUsername.value]"
+          },
+          "containerRegistryPassword": {
+            "value": "[listOutputsWithSecureValues('containerRegistry', '2025-04-01').containerRegistryPassword]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "16614528904899144010"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "metadata": {
+                "description": "Environment name (dev, prod)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "uniqueId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 8,
+              "metadata": {
+                "description": "Unique identifier suffix to prevent naming conflicts"
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace resource ID"
+              }
+            },
+            "logAnalyticsWorkspaceCustomerId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace customer ID"
+              }
+            },
+            "applicationInsightsConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Application Insights connection string"
+              }
+            },
+            "taskifyApiImage": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image for Taskify.Api"
+              }
+            },
+            "taskifyWebImage": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image for Taskify.Web"
+              }
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.25",
+              "metadata": {
+                "description": "Container App CPU allocation (0.25, 0.5, 1.0, 2.0, 4.0)"
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "0.5Gi",
+              "metadata": {
+                "description": "Container App memory allocation (0.5Gi, 1Gi, 2Gi, 4Gi, 8Gi)"
+              }
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 0,
+              "minValue": 0,
+              "maxValue": 30,
+              "metadata": {
+                "description": "Minimum replicas for Container Apps (0 = scale to zero)"
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 10,
+              "minValue": 1,
+              "maxValue": 30,
+              "metadata": {
+                "description": "Maximum replicas for Container Apps"
+              }
+            },
+            "postgresqlConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "PostgreSQL connection string"
+              }
+            },
+            "containerRegistryLoginServer": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Container Registry login server"
+              }
+            },
+            "containerRegistryUsername": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Azure Container Registry admin username"
+              }
+            },
+            "containerRegistryPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Azure Container Registry admin password"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[parameters('logAnalyticsWorkspaceCustomerId')]",
+                    "sharedKey": "[listKeys(parameters('logAnalyticsWorkspaceId'), '2023-09-01').primarySharedKey]"
+                  }
+                },
+                "zoneRedundant": "[if(equals(parameters('environmentName'), 'prod'), true(), false())]"
+              }
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "tags": {
+                "azd-service-name": "api"
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]",
+                "configuration": {
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('containerRegistryLoginServer')]",
+                      "username": "[parameters('containerRegistryUsername')]",
+                      "passwordSecretRef": "acr-password"
+                    }
+                  ],
+                  "secrets": [
+                    {
+                      "name": "acr-password",
+                      "value": "[parameters('containerRegistryPassword')]"
+                    },
+                    {
+                      "name": "postgresql-connection-string",
+                      "value": "[parameters('postgresqlConnectionString')]"
+                    },
+                    {
+                      "name": "applicationinsights-connection-string",
+                      "value": "[parameters('applicationInsightsConnectionString')]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "taskify-api",
+                      "image": "[parameters('taskifyApiImage')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "[if(equals(parameters('environmentName'), 'prod'), 'Production', 'Development')]"
+                        },
+                        {
+                          "name": "ASPNETCORE_URLS",
+                          "value": "http://+:8080"
+                        },
+                        {
+                          "name": "ConnectionStrings__DefaultConnection",
+                          "secretRef": "postgresql-connection-string"
+                        },
+                        {
+                          "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                          "secretRef": "applicationinsights-connection-string"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": [
+                      {
+                        "name": "http-rule",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "100"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[format('ca-taskify-web-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "azd-service-name": "web"
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]",
+                "configuration": {
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "registries": [
+                    {
+                      "server": "[parameters('containerRegistryLoginServer')]",
+                      "username": "[parameters('containerRegistryUsername')]",
+                      "passwordSecretRef": "acr-password"
+                    }
+                  ],
+                  "secrets": [
+                    {
+                      "name": "acr-password",
+                      "value": "[parameters('containerRegistryPassword')]"
+                    },
+                    {
+                      "name": "applicationinsights-connection-string",
+                      "value": "[parameters('applicationInsightsConnectionString')]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "taskify-web",
+                      "image": "[parameters('taskifyWebImage')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "[if(equals(parameters('environmentName'), 'prod'), 'Production', 'Development')]"
+                        },
+                        {
+                          "name": "ASPNETCORE_URLS",
+                          "value": "http://+:8080"
+                        },
+                        {
+                          "name": "services__api__http__0",
+                          "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn)]"
+                        },
+                        {
+                          "name": "services__api__https__0",
+                          "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn)]"
+                        },
+                        {
+                          "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                          "secretRef": "applicationinsights-connection-string"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": [
+                      {
+                        "name": "http-rule",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "100"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]",
+                "[resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "containerAppsEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment resource ID"
+              },
+              "value": "[resourceId('Microsoft.App/managedEnvironments', format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+            },
+            "containerAppsEnvironmentName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment name"
+              },
+              "value": "[format('cae-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]"
+            },
+            "apiManagedIdentityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Taskify API Managed Identity Principal ID"
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01', 'full').identity.principalId]"
+            },
+            "taskifyApiFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Taskify API FQDN"
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "taskifyApiUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Taskify API URL"
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn)]"
+            },
+            "taskifyWebFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Taskify Web FQDN"
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-web-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "taskifyWebUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Taskify Web URL"
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-web-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn)]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "containerRegistry",
+        "monitoring",
+        "postgresql"
+      ]
+    }
+  },
+  "outputs": {
+    "containerAppsEnvironmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Container Apps Environment ID"
+      },
+      "value": "[reference('containerApps').outputs.containerAppsEnvironmentId.value]"
+    },
+    "taskifyApiUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Taskify API endpoint"
+      },
+      "value": "[reference('containerApps').outputs.taskifyApiUrl.value]"
+    },
+    "taskifyWebUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Taskify Web endpoint"
+      },
+      "value": "[reference('containerApps').outputs.taskifyWebUrl.value]"
+    },
+    "postgresqlServerFqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "PostgreSQL server FQDN"
+      },
+      "value": "[reference('postgresql').outputs.postgresqlServerFqdn.value]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Application Insights connection string (secret)"
+      },
+      "value": "[listOutputsWithSecureValues('monitoring', '2025-04-01').applicationInsightsConnectionString]"
+    },
+    "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Container Registry endpoint (for azd)"
+      },
+      "value": "[reference('containerRegistry').outputs.containerRegistryEndpoint.value]"
+    },
+    "AZURE_CONTAINER_REGISTRY_NAME": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Container Registry name"
+      },
+      "value": "[reference('containerRegistry').outputs.containerRegistryName.value]"
+    },
+    "SERVICE_API_ENDPOINT_URL": {
+      "type": "string",
+      "metadata": {
+        "description": "API service endpoint"
+      },
+      "value": "[reference('containerApps').outputs.taskifyApiUrl.value]"
+    },
+    "SERVICE_WEB_ENDPOINT_URL": {
+      "type": "string",
+      "metadata": {
+        "description": "Web service endpoint"
+      },
+      "value": "[reference('containerApps').outputs.taskifyWebUrl.value]"
+    }
+  }
+}

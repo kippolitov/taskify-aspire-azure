@@ -351,6 +351,329 @@ gh secret set AZURE_SUBSCRIPTION_ID --body "<subscription-id>"
 
 ---
 
+## Infrastructure Updates
+
+When you need to modify Azure infrastructure (change SKUs, add resources, update configurations), follow these steps:
+
+### Update Bicep Templates
+
+1. **Locate the module to modify**:
+   ```bash
+   # Infrastructure files are in:
+   infra/
+   ├── main.bicep                    # Root orchestration
+   ├── main.parameters.dev.json      # Dev parameters
+   ├── main.parameters.prod.json     # Prod parameters
+   └── resources/
+       ├── monitoring.bicep          # Log Analytics + App Insights
+       ├── keyvault.bicep            # Key Vault
+       ├── postgresql.bicep          # PostgreSQL database
+       ├── container-apps.bicep      # Container Apps
+       └── networking.bicep          # VNet (optional)
+   ```
+
+2. **Make your changes**:
+   ```bash
+   # Example: Increase PostgreSQL storage
+   # Edit infra/main.parameters.dev.json
+   {
+     "postgresqlStorageSizeGB": {
+       "value": 64  // Changed from 32 to 64
+     }
+   }
+   ```
+
+3. **Validate Bicep syntax**:
+   ```bash
+   # Lint and validate templates
+   az bicep build --file infra/main.bicep
+   
+   # Check for errors
+   az bicep lint --file infra/main.bicep
+   ```
+
+4. **Preview changes (What-If)**:
+   ```bash
+   # See what will change before applying
+   az deployment group what-if \
+     --resource-group rg-taskify-dev \
+     --template-file infra/main.bicep \
+     --parameters infra/main.parameters.dev.json
+   ```
+
+5. **Apply infrastructure updates**:
+   ```bash
+   # Using azd (recommended)
+   azd provision
+   
+   # Or using Azure CLI directly
+   az deployment group create \
+     --resource-group rg-taskify-dev \
+     --template-file infra/main.bicep \
+     --parameters infra/main.parameters.dev.json
+   ```
+
+### Common Infrastructure Changes
+
+#### Scale Container Apps
+
+```bash
+# Update parameters file
+{
+  "containerAppCpu": { "value": 0.5 },  // Increase from 0.25
+  "containerAppMemory": { "value": "1Gi" },  // Increase from 0.5Gi
+  "containerAppMaxReplicas": { "value": 20 }  // Increase from 10
+}
+
+# Redeploy
+azd provision
+```
+
+#### Upgrade PostgreSQL SKU
+
+```bash
+# Update parameters file
+{
+  "postgresqlSkuName": { "value": "Standard_D2s_v3" },  // Upgrade from B1ms
+  "postgresqlTier": { "value": "GeneralPurpose" },  // Change from Burstable
+  "postgresqlStorageSizeGB": { "value": 128 }  // Increase storage
+}
+
+# Redeploy (minimal downtime, ~2-5 minutes)
+azd provision
+```
+
+#### Enable High Availability
+
+```bash
+# Update parameters file
+{
+  "postgresqlHighAvailabilityMode": { "value": "ZoneRedundant" }  // Enable HA
+}
+
+# Redeploy (creates standby replica)
+azd provision
+```
+
+#### Add VNet Integration
+
+```bash
+# Update main.bicep parameters
+{
+  "enableVNetIntegration": { "value": true }
+}
+
+# Provision networking resources
+azd provision
+```
+
+### Infrastructure Update Best Practices
+
+1. **Always test in development first**:
+   ```bash
+   azd env select dev
+   azd provision
+   # Test thoroughly, then apply to production
+   ```
+
+2. **Use What-If to preview changes**:
+   ```bash
+   az deployment group what-if \
+     --resource-group rg-taskify-prod \
+     --template-file infra/main.bicep \
+     --parameters infra/main.parameters.prod.json
+   ```
+
+3. **Backup critical data before major changes**:
+   ```bash
+   # Create PostgreSQL backup
+   az postgres flexible-server backup create \
+     --resource-group rg-taskify-prod \
+     --name psql-taskify-prod-<uniqueId> \
+     --backup-name pre-upgrade-$(date +%Y%m%d)
+   ```
+
+4. **Monitor deployments**:
+   ```bash
+   # Watch deployment progress
+   az deployment group list \
+     --resource-group rg-taskify-dev \
+     --output table
+   ```
+
+5. **Rollback infrastructure changes**:
+   ```bash
+   # Revert parameters to previous values
+   git checkout HEAD~1 -- infra/main.parameters.dev.json
+   
+   # Redeploy previous configuration
+   azd provision
+   ```
+
+### Using PowerShell Deployment Scripts
+
+For complex deployments with orchestration:
+
+```bash
+# Deploy with infrastructure validation
+./scripts/deploy-to-azure.ps1 -Environment dev -ProvisionOnly
+
+# Deploy with database migrations
+./scripts/deploy-to-azure.ps1 -Environment dev
+
+# Skip migrations (infrastructure only)
+./scripts/deploy-to-azure.ps1 -Environment prod -SkipMigrations
+
+# Dry-run to validate without deploying
+./scripts/deploy-to-azure.ps1 -Environment dev -DryRun
+```
+
+See [infra/README.md](../../infra/README.md) for complete Bicep module documentation.
+
+---
+
+## Resource Cleanup
+
+To delete Azure resources and avoid ongoing charges, follow these procedures based on your cleanup scope.
+
+### Complete Environment Cleanup
+
+Remove all resources for a specific environment:
+
+```bash
+# Using azd (recommended - safest)
+azd down
+
+# Confirms resource deletion
+# Prompts: "Are you sure you want to delete all resources? (y/N)"
+# Type 'y' and press Enter
+```
+
+**What gets deleted**:
+- Resource Group (`rg-taskify-dev-<uniqueId>`)
+- All resources inside (Container Apps, PostgreSQL, Key Vault, etc.)
+- Local `.azure/<env>` directory
+
+**Retention**:
+- Container App revisions: Deleted immediately
+- PostgreSQL backups: Retained for configured period (7-35 days)
+- Key Vault: Soft-deleted (90-day recovery window)
+- Application Insights data: Retained based on workspace policy
+
+### Delete Specific Resource Group
+
+If you created resources outside azd, delete manually:
+
+```bash
+# Delete resource group (WARNING: irreversible)
+az group delete --name rg-taskify-dev --yes --no-wait
+
+# Verify deletion
+az group list --query "[?name=='rg-taskify-dev']" --output table
+```
+
+### Purge Soft-Deleted Resources
+
+Key Vault uses soft-delete by default. To permanently delete:
+
+```bash
+# List soft-deleted Key Vaults
+az keyvault list-deleted --query "[?name contains(@, 'taskify')]"
+
+# Purge Key Vault (permanent, cannot be recovered)
+az keyvault purge --name kv-taskify-dev-<uniqueId>
+
+# Note: Only resource group owners can purge soft-deleted vaults
+```
+
+### Selective Resource Cleanup
+
+Delete individual resources while keeping others:
+
+```bash
+# Delete Container Apps only
+az containerapp delete \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --yes
+
+az containerapp delete \
+  --name ca-taskify-web-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --yes
+
+# Delete PostgreSQL database only
+az postgres flexible-server delete \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --name psql-taskify-dev-<uniqueId> \
+  --yes
+
+# Note: Monitor costs after partial cleanup to ensure no hidden charges
+```
+
+### Verify Complete Cleanup
+
+```bash
+# Check for remaining resources
+az resource list --resource-group rg-taskify-dev --output table
+
+# Check for remaining resource groups
+az group list --query "[?contains(name, 'taskify')]" --output table
+
+# Check for soft-deleted resources
+az keyvault list-deleted --query "[?name contains(@, 'taskify')]"
+```
+
+### Cost Verification After Cleanup
+
+```bash
+# Wait 24 hours, then check Azure Cost Management
+az consumption usage list \
+  --start-date $(date -u -d "yesterday" '+%Y-%m-%d') \
+  --end-date $(date -u '+%Y-%m-%d') \
+  --query "[?contains(instanceName, 'taskify')]"
+
+# Should return empty or minimal charges from last day
+```
+
+### Cleanup Checklist
+
+Before deleting resources, ensure:
+- ✅ Data is backed up (if needed)
+- ✅ Users are notified (if production environment)
+- ✅ DNS records are updated (if custom domain configured)
+- ✅ GitHub Actions secrets are removed (if decommissioning entirely)
+- ✅ Billing alerts are disabled
+- ✅ Service Principal credentials are revoked (if no longer needed)
+
+### Emergency Stop (Cost Containment)
+
+If you need to immediately stop charges without deleting resources:
+
+```bash
+# Stop Container Apps (scale to zero)
+az containerapp update \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --min-replicas 0 \
+  --max-replicas 0
+
+az containerapp update \
+  --name ca-taskify-web-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --min-replicas 0 \
+  --max-replicas 0
+
+# Stop PostgreSQL (not recommended for production)
+az postgres flexible-server stop \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --name psql-taskify-dev-<uniqueId>
+
+# Note: Stopped PostgreSQL servers still incur storage charges
+```
+
+---
+
 ## Troubleshooting
 
 ### Issue: `azd provision` fails with authentication error
@@ -463,6 +786,159 @@ azd provision
 # Complete teardown
 azd down --force --purge
 ```
+
+---
+
+## Rollback and Revision Management
+
+Azure Container Apps maintains revision history, allowing you to rollback to previous working versions if issues are detected.
+
+### Understanding Container App Revisions
+
+Each deployment creates a new **revision** (immutable snapshot):
+- Revisions are named: `ca-taskify-api-dev--<revision-suffix>`
+- Up to 100 revisions retained
+- Revisions can run side-by-side for blue-green deployments
+
+### View Current Revisions
+
+```bash
+# List all revisions for API
+az containerapp revision list \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --output table
+
+# List all revisions for Web
+az containerapp revision list \
+  --name ca-taskify-web-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --output table
+```
+
+**Output columns**:
+- `Name`: Revision identifier
+- `Active`: Currently receiving traffic
+- `Created`: Deployment timestamp
+- `TrafficWeight`: % of traffic routed to this revision
+
+### Rollback to Previous Revision
+
+If the latest deployment has issues, rollback to a known-good revision:
+
+```bash
+# Step 1: Identify the previous working revision
+az containerapp revision list \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --query "[?active==\`true\`].{Name:name, Created:properties.createdTime}" \
+  --output table
+
+# Step 2: Deactivate the problematic current revision
+# (Container Apps will automatically activate the previous revision)
+az containerapp revision deactivate \
+  --name <current-revision-name> \
+  --resource-group rg-taskify-dev-<uniqueId>
+
+# Step 3: Verify traffic shifted to previous revision
+az containerapp revision list \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --query "[?trafficWeight!=null].{Name:name, Traffic:trafficWeight}" \
+  --output table
+```
+
+### Manual Traffic Splitting (Blue-Green Deployment)
+
+For zero-downtime rollback, split traffic between revisions:
+
+```bash
+# Route 90% traffic to previous revision, 10% to new (canary)
+az containerapp ingress traffic set \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --revision-weight <previous-revision>=90 <current-revision>=10
+
+# Monitor canary for errors, then route 100% to working revision
+az containerapp ingress traffic set \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --revision-weight <working-revision>=100
+```
+
+### Set Single Revision Mode
+
+Force Container Apps to use only one active revision (automatic rollback):
+
+```bash
+# Set single revision mode
+az containerapp revision set-mode \
+  --name ca-taskify-api-dev-<uniqueId> \
+  --resource-group rg-taskify-dev-<uniqueId> \
+  --mode single
+
+# Activate specific revision
+az containerapp revision activate \
+  --name <revision-name> \
+  --resource-group rg-taskify-dev-<uniqueId>
+```
+
+### Automated Rollback in CI/CD
+
+For GitHub Actions workflows, rollback is triggered if smoke tests fail:
+
+```yaml
+- name: Rollback on failure
+  if: failure()
+  run: |
+    echo "Deployment failed. Initiating rollback..."
+    PREVIOUS_REVISION=$(az containerapp revision list \
+      --name ca-taskify-api-dev-<uniqueId> \
+      --resource-group rg-taskify-dev-<uniqueId> \
+      --query "[?properties.provisioningState=='Succeeded'] | sort_by(@, &properties.createdTime) | [-2].name" \
+      -o tsv)
+    
+    az containerapp revision activate \
+      --name $PREVIOUS_REVISION \
+      --resource-group rg-taskify-dev-<uniqueId>
+```
+
+### Database Migration Rollback
+
+**CAUTION**: EF Core migrations are forward-only by default. Rollback requires:
+
+1. **Manual SQL rollback script**:
+   ```bash
+   # Connect to database
+   psql "$(azd env get-values --output json | jq -r '.POSTGRESQL_CONNECTION_STRING')"
+   
+   # Execute rollback SQL
+   \i migrations/rollback_<migration-name>.sql
+   ```
+
+2. **EF Core migration revert** (local only):
+   ```bash
+   # Revert to previous migration
+   dotnet ef migrations remove --project src/Taskify.Api
+   ```
+
+3. **Best practice**: Test migrations in staging first, use transactional DDL where possible.
+
+### Rollback Playbook
+
+**If deployment fails in CI/CD**:
+1. GitHub Actions automatically deactivates failing revision (if smoke tests fail)
+2. Check logs: `azd logs --service api --follow`
+3. Verify previous revision activated: `az containerapp revision list`
+
+**If issue discovered post-deployment**:
+1. Identify last known-good revision: `az containerapp revision list`
+2. Deactivate current revision: `az containerapp revision deactivate`
+3. Monitor Application Insights for errors
+4. If database migration issue, manually rollback schema changes
+5. Re-deploy fix via `azd deploy` or GitHub Actions
+
+**Recovery time objective (RTO)**: <5 minutes for application rollback, <30 minutes for database rollback
 
 ---
 

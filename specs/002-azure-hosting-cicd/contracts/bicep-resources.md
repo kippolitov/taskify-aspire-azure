@@ -42,11 +42,16 @@ infra/
 ```bicep
 @minLength(1)
 @maxLength(20)
-@description('Environment name (dev, staging, prod)')
+@description('Environment name (dev, prod)')
 param environmentName string
 
 @description('Azure region for all resources')
 param location string = resourceGroup().location
+
+@minLength(3)
+@maxLength(8)
+@description('Unique identifier suffix to prevent naming conflicts (generated from subscription ID hash or timestamp)')
+param uniqueId string = uniqueString(resourceGroup().id)
 
 @description('Container App CPU allocation (0.25, 0.5, 1.0, 2.0, 4.0)')
 param containerAppCpu string = '0.25'
@@ -150,7 +155,7 @@ module containerApps './resources/container-apps.bicep' = { ... }
 
 ```bicep
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: 'cae-taskify-${environmentName}'
+  name: 'cae-taskify-${environmentName}-${uniqueId}'
   location: location
   properties: {
     appLogsConfiguration: {
@@ -163,7 +168,7 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
 }
 
 resource taskifyApiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: 'ca-taskify-api-${environmentName}'
+  name: 'ca-taskify-api-${environmentName}-${uniqueId}'
   location: location
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "containerAppCpu": {
+      "value": "1.0"
+    },
+    "containerAppMemory": {
+      "value": "2Gi"
+    },
+    "containerAppMinReplicas": {
+      "value": 1
+    },
+    "containerAppMaxReplicas": {
+      "value": 30
+    },
+    "postgresqlSkuName": {
+      "value": "Standard_D2s_v3"
+    },
+    "postgresqlTier": {
+      "value": "GeneralPurpose"
+    },
+    "postgresqlStorageGB": {
+      "value": 128
+    },
+    "postgresqlVersion": {
+      "value": "16"
+    },
+    "postgresqlHighAvailability": {
+      "value": "ZoneRedundant"
+    },
+    "postgresqlBackupRetentionDays": {
+      "value": 35
+    }
+  }
+}

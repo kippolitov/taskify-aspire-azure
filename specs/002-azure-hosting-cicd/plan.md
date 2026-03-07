@@ -17,12 +17,12 @@ Deploy the Taskify .NET Aspire application to Azure with automated CI/CD pipelin
 **Testing**: xUnit with xUnit.runner.visualstudio, Microsoft.AspNetCore.Mvc.Testing  
 **Target Platform**: Azure Container Apps (Linux containers), Azure-managed services
 **Project Type**: Distributed web application (Aspire multi-project: API backend, Blazor frontend, database migrations)  
-**Performance Goals**: <200ms API response (p95), <2s initial render, 100+ concurrent users  
-**Constraints**: <$500/month production hosting cost, HTTPS required, zero-downtime deployments preferred  
-**Scale/Scope**: 3 microservices (API, Web, Migrator), 1 database, 2-3 Azure environments (dev/staging/prod)
-**CI/CD Platform**: GitHub Actions with Azure credentials (Service Principal or Federated Identity)
+**Performance Goals**: <200ms API response (p95), <2s initial render, infrastructure designed for 100+ concurrent users when production deployed  
+**Constraints**: <$100/month development environment cost, HTTPS required, scale-to-zero for cost optimization  
+**Scale/Scope**: 3 microservices (API, Web, Migrator), 1 database, single development environment initially; infrastructure designed for production expansion
+**CI/CD Platform**: GitHub Actions with Azure credentials (OIDC Federated Identity)
 **Infrastructure**: Azure Developer CLI (azd) with Bicep templates for resource provisioning
-**Deployment Strategy**: Container-based deployment to Azure Container Apps via azd/Docker
+**Deployment Strategy**: Container-based deployment to Azure Container Apps via azd/Docker with scale-to-zero capability
 
 ## Constitution Check
 
