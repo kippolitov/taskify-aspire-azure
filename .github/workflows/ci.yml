@@ -107,10 +107,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Azure CLI
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
+      - name: Verify Azure CLI
+        run: az version
 
       - name: Validate main Bicep template
         run: |
