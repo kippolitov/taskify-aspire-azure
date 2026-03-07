@@ -123,11 +123,11 @@ public class CommentsController(TaskifyDbContext db, CommentService commentServi
 }
 
 public record AddCommentRequest(
-    [Required] [property: JsonRequired] int AuthorId,
-    [Required] [StringLength(10000, MinimumLength = 1)] string Text
+    [Required][property: JsonRequired] int AuthorId,
+    [Required][StringLength(10000, MinimumLength = 1)] string Text
 );
 
 public record EditCommentRequest(
-    [Required] [property: JsonRequired] int RequestingUserId,
-    [Required] [StringLength(10000, MinimumLength = 1)] string Text
+    [Required][property: JsonRequired] int RequestingUserId,
+    [Required][StringLength(10000, MinimumLength = 1)] string Text
 );
