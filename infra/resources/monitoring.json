@@ -1,0 +1,126 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "14851099468532393691"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Environment name (dev, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources"
+      }
+    },
+    "uniqueId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 8,
+      "metadata": {
+        "description": "Unique identifier suffix to prevent naming conflicts"
+      }
+    },
+    "budgetAlertEmails": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Email addresses for budget alerts (comma-separated)"
+      }
+    }
+  },
+  "resources": {
+    "logAnalyticsWorkspace": {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[format('law-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 90
+      }
+    },
+    "applicationInsights": {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[format('appi-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('law-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]",
+        "RetentionInDays": 90,
+        "SamplingPercentage": 100
+      },
+      "dependsOn": [
+        "logAnalyticsWorkspace"
+      ]
+    },
+    "budgetActionGroup": {
+      "condition": "[not(equals(parameters('budgetAlertEmails'), ''))]",
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[format('ag-budget-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))]",
+      "location": "global",
+      "properties": {
+        "copy": [
+          {
+            "name": "emailReceivers",
+            "count": "[length(split(parameters('budgetAlertEmails'), ','))]",
+            "input": {
+              "name": "[format('Email-{0}', replace(split(parameters('budgetAlertEmails'), ',')[copyIndex('emailReceivers')], '@', '-at-'))]",
+              "emailAddress": "[trim(split(parameters('budgetAlertEmails'), ',')[copyIndex('emailReceivers')])]",
+              "useCommonAlertSchema": true
+            }
+          }
+        ],
+        "groupShortName": "BudgetAlert",
+        "enabled": true
+      }
+    }
+  },
+  "outputs": {
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics Workspace resource ID"
+      },
+      "value": "[resourceId('Microsoft.OperationalInsights/workspaces', format('law-taskify-{0}-{1}', parameters('environmentName'), parameters('uniqueId')))]"
+    },
+    "logAnalyticsWorkspaceCustomerId": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics Workspace customer ID"
+      },
+      "value": "[reference('logAnalyticsWorkspace').customerId]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Application Insights connection string"
+      },
+      "value": "[reference('applicationInsights').ConnectionString]"
+    },
+    "applicationInsightsInstrumentationKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights instrumentation key (legacy)"
+      },
+      "value": "[reference('applicationInsights').InstrumentationKey]"
+    }
+  }
+}

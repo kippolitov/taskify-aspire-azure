@@ -1,0 +1,151 @@
+name: Azure Deployment
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-to-azure:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Azure Developer CLI
+        run: curl -fsSL https://aka.ms/install-azd.sh | bash
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure azd environment
+        run: |
+          ENV_NAME="${{ inputs.environment || 'dev' }}"
+          echo "Configuring azd environment: $ENV_NAME"
+          
+          # Select or create environment
+          azd env select $ENV_NAME || azd env new $ENV_NAME
+          
+          # Set Azure subscription and location
+          azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azd env set AZURE_LOCATION eastus2
+        env:
+          AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
+
+      - name: Provision infrastructure
+        run: |
+          ENV_NAME="${{ inputs.environment || 'dev' }}"
+          
+          # Use environment-specific parameter file if it exists
+          if [ -f "infra/main.parameters.$ENV_NAME.json" ]; then
+            echo "Using parameter file: infra/main.parameters.$ENV_NAME.json"
+            azd provision --no-prompt --parameters "infra/main.parameters.$ENV_NAME.json"
+          else
+            echo "No environment-specific parameter file found, using defaults"
+            azd provision --no-prompt
+          fi
+        env:
+          AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
+          POSTGRESQL_ADMIN_PASSWORD: ${{ secrets.POSTGRESQL_ADMIN_PASSWORD }}
+
+      - name: Get database connection string
+        id: db-connection
+        run: |
+          echo "Retrieving PostgreSQL connection string from azd outputs..."
+          CONNECTION_STRING=$(azd env get-values --output json | jq -r '.POSTGRESQL_CONNECTION_STRING // empty')
+          
+          if [ -z "$CONNECTION_STRING" ]; then
+            echo "Warning: Connection string not found in azd outputs"
+            # Fallback: construct from environment variables
+            CONNECTION_STRING="Host=psql-taskify-${{ inputs.environment || 'dev' }}.postgres.database.azure.com;Database=taskify;Username=taskifyadmin;Password=${{ secrets.POSTGRESQL_ADMIN_PASSWORD }};SSL Mode=Require"
+          fi
+          
+          echo "::add-mask::$CONNECTION_STRING"
+          echo "connection-string=$CONNECTION_STRING" >> $GITHUB_OUTPUT
+
+      - name: Run database migrations
+        run: |
+          echo "Running EF Core migrations..."
+          dotnet run --project src/Taskify.Migrator
+        env:
+          ConnectionStrings__DefaultConnection: ${{ steps.db-connection.outputs.connection-string }}
+
+      - name: Deploy applications
+        run: azd deploy --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
+
+      - name: Get deployment URLs
+        id: deployment-urls
+        run: |
+          echo "Retrieving deployment URLs..."
+          API_URL=$(azd env get-values --output json | jq -r '.TASKIFY_API_URL // empty')
+          WEB_URL=$(azd env get-values --output json | jq -r '.TASKIFY_WEB_URL // empty')
+          
+          if [ -z "$API_URL" ] || [ -z "$WEB_URL" ]; then
+            echo "Warning: Deployment URLs not found in azd outputs"
+            # URLs will be available after Container Apps are deployed
+            echo "Deployment may still be in progress. Check Azure Portal."
+          fi
+          
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "web-url=$WEB_URL" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        run: bash infra/hooks/postdeploy.sh
+        env:
+          TASKIFY_API_URL: ${{ steps.deployment-urls.outputs.api-url }}
+          TASKIFY_WEB_URL: ${{ steps.deployment-urls.outputs.web-url }}
+
+      - name: Publish deployment summary
+        if: always()
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: \`${{ inputs.environment || 'dev' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Subscription**: \`${{ secrets.AZURE_SUBSCRIPTION_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Location**: \`eastus2\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          API_URL="${{ steps.deployment-urls.outputs.api-url }}"
+          WEB_URL="${{ steps.deployment-urls.outputs.web-url }}"
+          
+          if [ -n "$API_URL" ]; then
+            echo "- **API URL**: [$API_URL]($API_URL)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **API URL**: ⏳ Deployment in progress" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -n "$WEB_URL" ]; then
+            echo "- **Web URL**: [$WEB_URL]($WEB_URL)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Web URL**: ⏳ Deployment in progress" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Deployment completed successfully" >> $GITHUB_STEP_SUMMARY

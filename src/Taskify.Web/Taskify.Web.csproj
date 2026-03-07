@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <ProjectReference Include="..\Taskify.Shared\Taskify.Shared.csproj" />
     <ProjectReference Include="..\Taskify.ServiceDefaults\Taskify.ServiceDefaults.csproj" />
@@ -13,5 +13,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>a86fb743-9d71-43e5-bef1-ae7571a18117</UserSecretsId>
   </PropertyGroup>
 </Project>

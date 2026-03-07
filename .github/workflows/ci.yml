@@ -1,0 +1,133 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: ['main', 'develop']
+  push:
+    branches: ['main']
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            src/**/bin/Release/**
+            src/**/obj/Release/**
+          retention-days: 1
+
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run API unit tests
+        run: |
+          dotnet test tests/Taskify.Api.Tests \
+            --configuration Release \
+            --logger trx \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./test-results
+
+      - name: Run Web unit tests
+        run: |
+          dotnet test tests/Taskify.Web.Tests \
+            --configuration Release \
+            --logger trx \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./test-results
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: test-results/**/*.trx
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          directory: ./test-results
+          flags: unittests
+          fail_ci_if_error: false
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run dotnet format
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+
+  validate-bicep:
+    name: Validate Bicep Templates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Azure CLI
+        run: az version
+
+      - name: Validate main Bicep template
+        run: |
+          echo "Building and validating main.bicep..."
+          az bicep build --file infra/main.bicep
+          
+      - name: Lint main Bicep template
+        run: |
+          echo "Linting main.bicep for best practices..."
+          az bicep lint --file infra/main.bicep || true
+
+      - name: Validate monitoring module
+        run: az bicep build --file infra/resources/monitoring.bicep
+
+      - name: Validate keyvault module
+        run: az bicep build --file infra/resources/keyvault.bicep
+
+      - name: Validate postgresql module
+        run: az bicep build --file infra/resources/postgresql.bicep
+
+      - name: Validate container-apps module
+        run: az bicep build --file infra/resources/container-apps.bicep

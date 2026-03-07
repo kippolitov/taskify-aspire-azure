@@ -147,7 +147,7 @@ public class TasksController(TaskifyDbContext db, TaskService taskService) : Con
 }
 
 public record CreateTaskRequest(
-    [Required] [StringLength(300, MinimumLength = 1)] string Title,
+    [Required][StringLength(300, MinimumLength = 1)] string Title,
     string? Description,
     int? AssigneeId
 );
@@ -213,5 +213,5 @@ public class UpdateTaskRequestConverter
 }
 
 public record MoveStatusRequest(
-    [Required] [property: System.Text.Json.Serialization.JsonRequired] ColumnStatus Status
+    [Required][property: System.Text.Json.Serialization.JsonRequired] ColumnStatus Status
 );
