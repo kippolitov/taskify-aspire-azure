@@ -47,6 +47,15 @@ secrets/
 .secrets/
 .aspire/
 
+# Azure Developer CLI (azd) - environment-specific secrets
+.azure/
+
+# Azure Functions (if added in future)
+local.settings.json
+__blobstorage__/
+__queuestorage__/
+__azurite_db*__.json
+
 # User secrets
 /src/*/secrets.json
 

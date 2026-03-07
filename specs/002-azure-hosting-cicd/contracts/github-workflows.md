@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document defines the contract for GitHub Actions workflows that automate building, testing, and deploying the Taskify application to Azure. The workflows implement a CI/CD pipeline with quality gates, performance validation, and environment-specific deployment strategies.
+This document defines the contract for GitHub Actions workflows that automate building, testing, and deploying the Taskify application to Azure. The workflows implement a CI/CD pipeline with quality gates, performance validation, and deployment automation. Initially targets a single development environment with infrastructure support for adding production deployment when ready.
 
 ---
 
@@ -212,29 +212,32 @@ jobs:
 
 ## 2. Azure Deployment Workflow (azure-dev.yml)
 
-**Purpose**: Deploy application to Azure using Azure Developer CLI (azd).
+**Purpose**: Deploy application to Azure development environment using Azure Developer CLI (azd). Automatically deploys on push to main branch; supports manual deployment from feature branches for testing.
 
 **Triggers**:
 ```yaml
 on:
   push:
-    branches: ['main']
-  workflow_dispatch:
+    branches: ['main']  # Automatic deployment to development environment
+  workflow_dispatch:     # Manual deployment trigger
     inputs:
       environment:
-        description: 'Environment to deploy to'
-        required: true
+        description: 'Environment to deploy to (dev initially; prod when ready)'
+        required: false
         default: 'dev'
         type: choice
         options:
           - dev
-          - staging
           - prod
 ```
 
+**Deployment Strategy**:
+- **Main branch push**: Automatically deploys to development environment without approval
+- **Manual dispatch**: Allows deploying from any branch to development for testing
+- **Production**: Parameter file prepared for future use; requires GitHub Environment approval when activated
+
 **Environments**:
-- `development`: Auto-deploy on push to `main`
-- `production`: Requires manual approval in GitHub UI
+- `development`: Auto-deploy on push to `main`, no approval required (fast feedback loop)
 
 **Jobs**:
 

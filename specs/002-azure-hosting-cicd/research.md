@@ -231,23 +231,27 @@ azd up            # Combined provision + deploy
 
 **Estimated monthly costs** (US East region, pay-as-you-go pricing):
 
-### Development Environment
+**Note**: Initial deployment targets a single development/testing environment to minimize costs. Production cost estimates provided for future planning only.
+
+### Development Environment (Primary Deployment Target)
 | Resource | SKU | Estimated Cost |
 |----------|-----|----------------|
 | Container Apps Environment | Consumption | Free tier (180k vCore-sec free) |
-| Container App - API | 0.25 vCPU, 0.5GB RAM | ~$5/month (low usage) |
-| Container App - Web | 0.25 vCPU, 0.5GB RAM | ~$5/month (low usage) |
+| Container App - API | 0.25 vCPU, 0.5GB RAM, scale-to-zero | ~$2/month (idle most of time) |
+| Container App - Web | 0.25 vCPU, 0.5GB RAM, scale-to-zero | ~$2/month (idle most of time) |
 | PostgreSQL Flexible Server | Burstable B1ms | ~$12/month |
 | Application Insights | <1GB ingestion | ~$2/month |
 | Key Vault | Standard | ~$0.50/month |
-| **Total** | | **~$25/month** |
+| **Total** | | **~$18-25/month** |
 
-### Production Environment
+**Scale-to-zero optimization**: Container Apps shut down when idle (no requests for ~5 minutes), reducing compute costs to near-zero during non-usage periods. Cold start is <5 seconds when accessed.
+
+### Production Environment (Future Reference - Not Initially Deployed)
 | Resource | SKU | Estimated Cost |
 |----------|-----|----------------|
 | Container Apps Environment | Consumption | Free tier + overage |
-| Container App - API | 1 vCPU, 2GB RAM, always-on | ~$75/month |
-| Container App - Web | 1 vCPU, 2GB RAM, always-on | ~$75/month |
+| Container App - API | 1 vCPU, 2GB RAM, min 1 replica | ~$75/month |
+| Container App - Web | 1 vCPU, 2GB RAM, min 1 replica | ~$75/month |
 | PostgreSQL Flexible Server | General Purpose D2s_v3 | ~$150/month |
 | PostgreSQL - Zone Redundant HA | Add-on | ~$60/month |
 | Application Insights | ~5GB ingestion | ~$10/month |
@@ -255,15 +259,12 @@ azd up            # Combined provision + deploy
 | **Total** | | **~$370/month** |
 
 **Cost optimization strategies**:
-- Use scale-to-zero for development environment (reduce Container Apps cost to near-zero)
-- Use Burstable PostgreSQL tier for development
-- Enable autoscaling for production (scale down during low-traffic periods)
-- Set up budget alerts in Azure Cost Management
+- **Development**: Scale-to-zero reduces idle costs; Burstable PostgreSQL minimizes database expense
+- **Production** (when deployed): Enable autoscaling to scale down during low-traffic periods; consider Reserved Instances for 30-40% savings on database
 
 **Spec compliance**:
-- Development estimate (~$25/month) is well under $200 budget ✅
-- Production estimate (~$370/month) is under $500 budget ✅
-- Adding staging environment would add ~$50-100/month (similar to dev but slightly larger)
+- Development estimate (~$25/month) is well under $100 budget ✅
+- Production estimate (~$370/month) for future reference (infrastructure designed to support when ready)
 
 ---
 

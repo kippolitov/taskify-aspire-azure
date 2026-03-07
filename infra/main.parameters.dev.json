@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "containerAppCpu": {
+      "value": "0.25"
+    },
+    "containerAppMemory": {
+      "value": "0.5Gi"
+    },
+    "containerAppMinReplicas": {
+      "value": 0
+    },
+    "containerAppMaxReplicas": {
+      "value": 5
+    },
+    "postgresqlSkuName": {
+      "value": "Standard_B1ms"
+    },
+    "postgresqlTier": {
+      "value": "Burstable"
+    },
+    "postgresqlStorageGB": {
+      "value": 32
+    },
+    "postgresqlVersion": {
+      "value": "16"
+    },
+    "postgresqlHighAvailability": {
+      "value": "Disabled"
+    },
+    "postgresqlBackupRetentionDays": {
+      "value": 7
+    }
+  }
+}
