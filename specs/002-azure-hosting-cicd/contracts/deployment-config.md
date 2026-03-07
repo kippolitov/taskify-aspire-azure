@@ -1,0 +1,539 @@
+# Contract: Deployment Configuration
+
+**Phase**: 1 — Design & Contracts  
+**Date**: March 6, 2026  
+**Plan**: [../plan.md](../plan.md)
+
+---
+
+## Overview
+
+This document defines the configuration contract for deploying Taskify to different Azure environments. It specifies environment-specific settings, secrets management, and configuration injection patterns.
+
+---
+
+## azure.yaml (azd Configuration)
+
+**Purpose**: Maps Aspire projects to Azure resources for azd deployment.
+
+**Location**: Repository root (`/azure.yaml`)
+
+**Contract**:
+
+```yaml
+name: taskify
+metadata:
+  template: aspire-starter@0.0.1
+
+services:
+  # API Backend
+  api:
+    project: src/Taskify.Api
+    language: dotnet
+    host: containerapp
+    docker:
+      path: src/Taskify.Api/Dockerfile
+      context: .
+
+  # Web Frontend
+  web:
+    project: src/Taskify.Web
+    language: dotnet
+    host: containerapp
+    docker:
+      path: src/Taskify.Web/Dockerfile
+      context: .
+
+# Infrastructure template
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+# Hooks for lifecycle events
+hooks:
+  predeploy:
+    posix:
+      shell: sh
+      run: bash ./infra/hooks/predeploy.sh
+  postdeploy:
+    posix:
+      shell: sh
+      run: bash ./infra/hooks/postdeploy.sh
+```
+
+**Key properties**:
+- `services`: Maps each .NET project to a Container App
+- `infra.path`: Points to Bicep templates directory
+- `hooks`: Scripts to run before/after deployment
+
+---
+
+## Environment Configuration Files
+
+**Location**: `.azure/{environment}/.env`
+
+These files are **gitignored** and created locally or in CI/CD via `azd env set`.
+
+### Development Environment (`.azure/dev/.env`)
+
+```bash
+AZURE_ENV_NAME=dev
+AZURE_LOCATION=eastus
+AZURE_SUBSCRIPTION_ID=<subscription-id>
+
+# Resource naming
+RESOURCE_GROUP_NAME=rg-taskify-dev
+CONTAINER_APPS_ENVIRONMENT_NAME=cae-taskify-dev
+
+# Container App configuration
+CONTAINER_APP_CPU=0.25
+CONTAINER_APP_MEMORY=0.5Gi
+CONTAINER_APP_MIN_REPLICAS=0
+CONTAINER_APP_MAX_REPLICAS=5
+
+# PostgreSQL configuration
+POSTGRESQL_SKU_NAME=Standard_B1ms
+POSTGRESQL_TIER=Burstable
+POSTGRESQL_STORAGE_GB=32
+POSTGRESQL_HIGH_AVAILABILITY=Disabled
+POSTGRESQL_ADMIN_LOGIN=taskifyadmin
+POSTGRESQL_ADMIN_PASSWORD=<generated-secret>
+
+# Monitoring
+APPLICATIONINSIGHTS_SAMPLING_PERCENTAGE=100
+
+# Deployment URLs (populated after deployment)
+TASKIFY_API_URL=https://ca-taskify-api-dev.{region}.azurecontainerapps.io
+TASKIFY_WEB_URL=https://ca-taskify-web-dev.{region}.azurecontainerapps.io
+POSTGRESQL_CONNECTION_STRING=Host=psql-taskify-dev-{hash}.postgres.database.azure.com;Database=taskify;Username=taskifyadmin;Password=<password>;SSL Mode=Require
+```
+
+### Production Environment (`.azure/prod/.env`)
+
+```bash
+AZURE_ENV_NAME=prod
+AZURE_LOCATION=eastus
+AZURE_SUBSCRIPTION_ID=<subscription-id>
+
+# Resource naming
+RESOURCE_GROUP_NAME=rg-taskify-prod
+CONTAINER_APPS_ENVIRONMENT_NAME=cae-taskify-prod
+
+# Container App configuration
+CONTAINER_APP_CPU=1.0
+CONTAINER_APP_MEMORY=2Gi
+CONTAINER_APP_MIN_REPLICAS=1
+CONTAINER_APP_MAX_REPLICAS=10
+
+# PostgreSQL configuration
+POSTGRESQL_SKU_NAME=Standard_D2s_v3
+POSTGRESQL_TIER=GeneralPurpose
+POSTGRESQL_STORAGE_GB=128
+POSTGRESQL_HIGH_AVAILABILITY=ZoneRedundant
+POSTGRESQL_ADMIN_LOGIN=taskifyadmin
+POSTGRESQL_ADMIN_PASSWORD=<generated-secret>
+
+# Monitoring
+APPLICATIONINSIGHTS_SAMPLING_PERCENTAGE=50
+
+# Deployment URLs (populated after deployment)
+TASKIFY_API_URL=https://ca-taskify-api-prod.{region}.azurecontainerapps.io
+TASKIFY_WEB_URL=https://ca-taskify-web-prod.{region}.azurecontainerapps.io
+POSTGRESQL_CONNECTION_STRING=Host=psql-taskify-prod-{hash}.postgres.database.azure.com;Database=taskify;Username=taskifyadmin;Password=<password>;SSL Mode=Require
+```
+
+---
+
+## Application Configuration Injection
+
+### Taskify.Api (appsettings.json)
+
+**Base configuration** (`src/Taskify.Api/appsettings.json`):
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+```
+
+**Environment-specific override** (`src/Taskify.Api/appsettings.Production.json`):
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "Taskify": "Information"
+    }
+  },
+  "AllowedHosts": "*.azurecontainerapps.io"
+}
+```
+
+**Environment variables** (injected by Container Apps):
+
+```bash
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:8080
+
+# Database connection (from Key Vault secret)
+ConnectionStrings__DefaultConnection=<postgresql-connection-string>
+
+# Application Insights (from Key Vault secret)
+APPLICATIONINSIGHTS_CONNECTION_STRING=<appinsights-connection-string>
+
+# Feature flags (optional)
+FeatureManagement__EnableRealTimeNotifications=true
+```
+
+**Configuration precedence** (lowest to highest):
+1. `appsettings.json`
+2. `appsettings.{Environment}.json`
+3. Environment variables
+4. Azure Key Vault (via Configuration Provider)
+
+---
+
+### Taskify.Web (appsettings.json)
+
+**Base configuration** (`src/Taskify.Web/appsettings.json`):
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ApiBaseUrl": "http://localhost:5000" # Default for local development
+}
+```
+
+**Environment variables** (injected by Container Apps):
+
+```bash
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:8080
+
+# API endpoint (from azd outputs)
+ApiBaseUrl=https://ca-taskify-api-prod.{region}.azurecontainerapps.io
+
+# Application Insights
+APPLICATIONINSIGHTS_CONNECTION_STRING=<appinsights-connection-string>
+```
+
+---
+
+## Secrets Management
+
+### Local Development (User Secrets)
+
+**Initialize user secrets**:
+```bash
+dotnet user-secrets init --project src/Taskify.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Database=taskify;Username=postgres;Password=dev" --project src/Taskify.Api
+```
+
+**Secrets file location**: `~/.microsoft/usersecrets/<user-secrets-id>/secrets.json`
+
+**Contract**: User secrets are **never** committed to Git. Each developer configures locally.
+
+---
+
+### Azure Key Vault (Production)
+
+**Secrets stored**:
+
+| Secret Name | Description | Injected As |
+|-------------|-------------|-------------|
+| `postgresql-connection-string` | Full EF Core connection string | `ConnectionStrings__DefaultConnection` |
+| `postgresql-admin-password` | Database admin password | (Internal use only) |
+| `applicationinsights-connection-string` | App Insights instrumentation | `APPLICATIONINSIGHTS_CONNECTION_STRING` |
+
+**Access method**: Container Apps reference Key Vault secrets directly via secret references:
+
+```bicep
+secrets: [
+  {
+    name: 'postgresql-connection-string'
+    keyVaultUrl: 'https://kv-taskify-${env}.vault.azure.net/secrets/postgresql-connection-string'
+    identity: 'system'
+  }
+]
+```
+
+**Authentication**: Container Apps use **System-Assigned Managed Identity** to access Key Vault (no passwords).
+
+---
+
+### GitHub Actions Secrets
+
+**Repository secrets** (set in GitHub repository settings):
+
+```
+AZURE_CLIENT_ID          # Azure AD App Registration client ID (for OIDC)
+AZURE_TENANT_ID          # Azure AD tenant ID
+AZURE_SUBSCRIPTION_ID    # Azure subscription ID
+```
+
+**Environment secrets** (set per GitHub Environment: dev, prod):
+
+```
+POSTGRESQL_ADMIN_PASSWORD  # Unique password per environment
+```
+
+**How to set**:
+```bash
+# Via GitHub CLI
+gh secret set AZURE_CLIENT_ID --body "<client-id>"
+gh secret set AZURE_TENANT_ID --body "<tenant-id>"
+gh secret set AZURE_SUBSCRIPTION_ID --body "<subscription-id>"
+
+# Environment-specific
+gh secret set POSTGRESQL_ADMIN_PASSWORD --env production --body "<password>"
+```
+
+---
+
+## Container Environment Variables
+
+### Common Variables (All Containers)
+
+```bash
+ASPNETCORE_ENVIRONMENT=Production  # or Development
+ASPNETCORE_URLS=http://+:8080
+DOTNET_RUNNING_IN_CONTAINER=true
+```
+
+### Taskify.Api Specific
+
+```bash
+ConnectionStrings__DefaultConnection=<from-key-vault>
+APPLICATIONINSIGHTS_CONNECTION_STRING=<from-key-vault>
+
+# CORS configuration (if needed)
+AllowedOrigins__0=https://ca-taskify-web-prod.{region}.azurecontainerapps.io
+```
+
+### Taskify.Web Specific
+
+```bash
+ApiBaseUrl=https://ca-taskify-api-prod.{region}.azurecontainerapps.io
+APPLICATIONINSIGHTS_CONNECTION_STRING=<from-key-vault>
+```
+
+---
+
+## Resource Tags
+
+All Azure resources include standard tags for governance:
+
+```bicep
+tags: {
+  environment: environmentName  // dev, staging, prod
+  project: 'taskify'
+  managedBy: 'azd'
+  costCenter: 'engineering'
+  owner: 'platform-team'
+}
+```
+
+**Purpose**:
+- Cost tracking by environment
+- Resource grouping and filtering
+- Automated cleanup of dev resources
+
+---
+
+## Deployment Parameter Files
+
+### infra/main.parameters.dev.json
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "dev" },
+    "location": { "value": "eastus" },
+    "containerAppCpu": { "value": "0.25" },
+    "containerAppMemory": { "value": "0.5Gi" },
+    "containerAppMinReplicas": { "value": 0 },
+    "containerAppMaxReplicas": { "value": 5 },
+    "postgresqlSkuName": { "value": "Standard_B1ms" },
+    "postgresqlTier": { "value": "Burstable" },
+    "postgresqlStorageGB": { "value": 32 },
+    "postgresqlVersion": { "value": "16" },
+    "postgresqlHighAvailability": { "value": "Disabled" },
+    "taskifyApiImage": { "value": "ghcr.io/{org}/taskify-api:dev-latest" },
+    "taskifyWebImage": { "value": "ghcr.io/{org}/taskify-web:dev-latest" }
+  }
+}
+```
+
+### infra/main.parameters.prod.json
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "prod" },
+    "location": { "value": "eastus" },
+    "containerAppCpu": { "value": "1.0" },
+    "containerAppMemory": { "value": "2Gi" },
+    "containerAppMinReplicas": { "value": 1 },
+    "containerAppMaxReplicas": { "value": 10 },
+    "postgresqlSkuName": { "value": "Standard_D2s_v3" },
+    "postgresqlTier": { "value": "GeneralPurpose" },
+    "postgresqlStorageGB": { "value": 128 },
+    "postgresqlVersion": { "value": "16" },
+    "postgresqlHighAvailability": { "value": "ZoneRedundant" },
+    "taskifyApiImage": { "value": "ghcr.io/{org}/taskify-api:prod-latest" },
+    "taskifyWebImage": { "value": "ghcr.io/{org}/taskify-web:prod-latest" }
+  }
+}
+```
+
+---
+
+## Configuration Validation
+
+### Pre-deployment Checks (`infra/hooks/predeploy.sh`)
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Pre-deployment Validation ==="
+
+# Check required environment variables
+required_vars=("AZURE_SUBSCRIPTION_ID" "AZURE_ENV_NAME")
+for var in "${required_vars[@]}"; do
+  if [ -z "${!var}" ]; then
+    echo "ERROR: $var is not set"
+    exit 1
+  fi
+done
+
+# Validate Bicep templates
+echo "Validating Bicep templates..."
+az bicep build --file ./infra/main.bicep
+
+# Check Azure CLI authentication
+echo "Checking Azure CLI authentication..."
+az account show > /dev/null || { echo "ERROR: Not logged in to Azure"; exit 1; }
+
+# Verify subscription
+current_sub=$(az account show --query id -o tsv)
+if [ "$current_sub" != "$AZURE_SUBSCRIPTION_ID" ]; then
+  echo "WARNING: Current subscription ($current_sub) does not match AZURE_SUBSCRIPTION_ID ($AZURE_SUBSCRIPTION_ID)"
+  az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+fi
+
+echo "✅ Pre-deployment validation complete"
+```
+
+### Post-deployment Checks (`infra/hooks/postdeploy.sh`)
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Post-deployment Validation ==="
+
+# Load deployment outputs
+API_URL=$(azd env get-values --output json | jq -r '.TASKIFY_API_URL')
+WEB_URL=$(azd env get-values --output json | jq -r '.TASKIFY_WEB_URL')
+
+# Health check: API
+echo "Checking API health..."
+response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health")
+if [ "$response" != "200" ]; then
+  echo "ERROR: API health check failed (HTTP $response)"
+  exit 1
+fi
+
+# Health check: Web
+echo "Checking Web health..."
+response=$(curl -s -o /dev/null -w "%{http_code}" "$WEB_URL/")
+if [ "$response" != "200" ]; then
+  echo "ERROR: Web health check failed (HTTP $response)"
+  exit 1
+fi
+
+# Database connectivity (via API endpoint)
+echo "Checking database connectivity..."
+response=$(curl -s "$API_URL/api/tasks" | jq -r '.length')
+if [ -z "$response" ]; then
+  echo "ERROR: Database connectivity check failed"
+  exit 1
+fi
+
+echo "✅ Post-deployment validation complete"
+echo "API URL: $API_URL"
+echo "Web URL: $WEB_URL"
+```
+
+---
+
+## Configuration Flow Diagram
+
+```
+Developer → User Secrets → Local Dev Environment
+                   ↓
+            Git Repository
+                   ↓
+           GitHub Actions
+                   ↓
+              azd provision
+                   ↓
+  Bicep Templates → Azure Resources
+                   ↓
+        Azure Key Vault ← Secrets
+                   ↓
+       Container Apps ← Environment Variables
+                   ↓
+  Running Application (reads config via IConfiguration)
+```
+
+---
+
+## Environment Comparison Matrix
+
+| Aspect | Development | Production |
+|--------|-------------|------------|
+| **CPU** | 0.25 vCPU | 1.0 vCPU |
+| **Memory** | 0.5 GiB | 2 GiB |
+| **Min Replicas** | 0 (scale to zero) | 1 (always on) |
+| **Max Replicas** | 5 | 10 |
+| **Database SKU** | Burstable B1ms | General Purpose D2s_v3 |
+| **Database Storage** | 32 GB | 128 GB |
+| **High Availability** | Disabled | Zone Redundant |
+| **Backup Retention** | 7 days | 35 days |
+| **Estimated Cost** | ~$25/month | ~$370/month |
+| **Deployment** | Auto (on push to main) | Manual (workflow_dispatch) |
+| **Approval Required** | No | Yes (1 reviewer) |
+
+---
+
+## Summary
+
+This configuration contract defines:
+- **azure.yaml**: Service-to-resource mapping for azd
+- **Environment files**: Environment-specific parameters (`.azure/{env}/.env`)
+- **Secrets management**: Key Vault for production, User Secrets for local dev
+- **Container variables**: Environment variable injection patterns
+- **Parameter files**: Bicep parameter overrides per environment
+- **Validation hooks**: Pre/post-deployment checks
+
+All configuration is version-controlled except secrets, which are managed securely via Azure Key Vault and GitHub Secrets.

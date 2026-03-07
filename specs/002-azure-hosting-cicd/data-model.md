@@ -1,0 +1,319 @@
+# Data Model: Azure Cloud Hosting & Automated Deployment
+
+**Phase**: 1 — Design & Contracts  
+**Date**: March 6, 2026  
+**Plan**: [plan.md](plan.md) | **Research**: [research.md](research.md)
+
+---
+
+## Overview
+
+This feature introduces deployment configuration rather than application data entities. The "data model" for infrastructure-as-code consists of Azure resource configurations, deployment environments, and pipeline definitions. Unlike traditional data models with database tables, these entities represent infrastructure state and deployment artifacts.
+
+---
+
+## Configuration Entities
+
+### DeploymentEnvironment
+
+Represents a complete Azure environment (development, staging, or production) with all necessary resources.
+
+| Property | Type | Constraints | Notes |
+|----------|------|-------------|-------|
+| `name` | `string` | Required, lowercase, max 20 chars | e.g., `dev`, `staging`, `prod` |
+| `subscriptionId` | `guid` | Required | Azure subscription ID |
+| `location` | `string` | Required | Azure region, e.g., `eastus` |
+| `resourceGroupName` | `string` | Required, unique per subscription | e.g., `rg-taskify-dev` |
+| `containerAppsEnvironmentName` | `string` | Required | e.g., `cae-taskify-dev` |
+| `tags` | `map<string, string>` | Optional | e.g., `{"environment": "dev", "project": "taskify"}` |
+
+**Validation rules**:
+- `name` must match `^[a-z][a-z0-9-]{1,19}$` (lowercase, alphanumeric, hyphens)
+- `location` must be a valid Azure region
+- Resource names must follow Azure naming conventions
+
+**Environments**:
+- **dev**: For active development and testing
+- **staging**: For pre-production validation (optional)
+- **prod**: For production workloads
+
+---
+
+### AzureContainerApp
+
+Represents a deployed microservice (API or Web) as an Azure Container App.
+
+| Property | Type | Constraints | Notes |
+|----------|------|-------------|-------|
+| `name` | `string` | Required | e.g., `ca-taskify-api`, `ca-taskify-web` |
+| `environmentId` | `resourceId` | Required | Reference to Container Apps Environment |
+| `image` | `string` | Required | Container image from ACR or GitHub Container Registry |
+| `cpu` | `decimal` | Required, 0.25-4.0 | vCPU allocation |
+| `memory` | `string` | Required | e.g., `0.5Gi`, `2Gi` |
+| `minReplicas` | `int` | Optional, default 0 | Minimum instance count (0 = scale to zero) |
+| `maxReplicas` | `int` | Optional, default 10 | Maximum instance count |
+| `environmentVariables` | `array` | Optional | Non-sensitive config values |
+| `secrets` | `array` | Optional | References to Key Vault secrets |
+| `ingress` | `object` | Required for external-facing apps | HTTP/HTTPS configuration |
+
+**Example instances**:
+- **Taskify.Api**: 
+  - CPU: 1.0 vCPU (prod), 0.25 vCPU (dev)
+  - Memory: 2Gi (prod), 0.5Gi (dev)
+  - Ingress: External HTTPS, port 8080
+  - Min replicas: 1 (prod), 0 (dev)
+- **Taskify.Web**:
+  - CPU: 1.0 vCPU (prod), 0.25 vCPU (dev)
+  - Memory: 2Gi (prod), 0.5Gi (dev)
+  - Ingress: External HTTPS, port 8080
+  - Min replicas: 1 (prod), 0 (dev)
+
+---
+
+### AzurePostgreSQLServer
+
+Represents the Azure Database for PostgreSQL Flexible Server.
+
+| Property | Type | Constraints | Notes |
+|----------|------|-------------|-------|
+| `name` | `string` | Required, globally unique | e.g., `psql-taskify-dev` |
+| `administratorLogin` | `string` | Required | Admin username (not used in production; use Managed Identity) |
+| `administratorPassword` | `securestring` | Required | Stored in Key Vault |
+| `skuName` | `string` | Required | e.g., `Standard_B1ms` (dev), `Standard_D2s_v3` (prod) |
+| `tier` | `string` | Required | `Burstable`, `GeneralPurpose`, or `MemoryOptimized` |
+| `storageSizeGB` | `int` | Required, 32-16384 | Database storage allocation |
+| `version` | `string` | Required | PostgreSQL version, e.g., `16` |
+| `highAvailabilityMode` | `string` | Optional | `ZoneRedundant` for production, `Disabled` for dev |
+| `backupRetentionDays` | `int` | Optional, default 7 | 7-35 days |
+| `geoRedundantBackup` | `bool` | Optional, default false | Enable for production |
+
+**SKU recommendations**:
+- **Development**: `Standard_B1ms` (Burstable, 1 vCore, 2GB RAM)
+- **Production**: `Standard_D2s_v3` (General Purpose, 2 vCores, 8GB RAM)
+
+**Network**:
+- Public access disabled
+- VNet integration or private endpoint
+- Firewall rules for Azure services
+
+---
+
+### AzureKeyVault
+
+Represents the Azure Key Vault for secrets management.
+
+| Property | Type | Constraints | Notes |
+|----------|------|-------------|-------|
+| `name` | `string` | Required, globally unique | e.g., `kv-taskify-dev` |
+| `skuName` | `string` | Required | `Standard` or `Premium` |
+| `enabledForDeployment` | `bool` | Optional, default false | Allow VMs to retrieve secrets |
+| `enabledForDiskEncryption` | `bool` | Optional, default false | |
+| `enabledForTemplateDeployment` | `bool` | Optional, default true | Allow ARM templates to access |
+| `enableSoftDelete` | `bool` | Required, default true | 90-day recovery window |
+| `enablePurgeProtection` | `bool` | Optional, default false | Prevent permanent deletion |
+| `accessPolicies` | `array` | Required | RBAC or access policy definitions |
+
+**Secrets stored**:
+- `postgresql-connection-string`: Full connection string for EF Core
+- `postgresql-admin-password`: Admin password for database
+- `applicationinsights-connection-string`: App Insights instrumentation key
+
+**Access**:
+- Container Apps access via Managed Identity
+- GitHub Actions access via Service Principal (read-only for secrets)
+
+---
+
+### ApplicationInsights
+
+Represents Azure Application Insights for monitoring and telemetry.
+
+| Property | Type | Constraints | Notes |
+|----------|------|-------------|-------|
+| `name` | `string` | Required | e.g., `appi-taskify-dev` |
+| `applicationType` | `string` | Required | `web` |
+| `workspaceId` | `resourceId` | Required | Link to Log Analytics Workspace |
+| `retentionInDays` | `int` | Optional, default 90 | 30-730 days |
+| `samplingPercentage` | `decimal` | Optional, default 100 | Reduce ingestion for cost |
+
+**Integration**:
+- Connection string injected via environment variable `APPLICATIONINSIGHTS_CONNECTION_STRING`
+- .NET Aspire ServiceDefaults automatically configure telemetry collection
+
+---
+
+### GitHubActionsWorkflow
+
+Represents a GitHub Actions workflow definition (not an Azure resource).
+
+| Property | Type | Constraints | Notes |
+|----------|------|-------------|-------|
+| `name` | `string` | Required | Workflow name |
+| `triggers` | `array` | Required | `push`, `pull_request`, `workflow_dispatch` |
+| `jobs` | `array` | Required | Job definitions |
+| `secrets` | `array` | Required | GitHub Secrets required |
+| `environments` | `array` | Optional | GitHub Environment protection |
+
+**Workflows**:
+
+#### CI Workflow (`ci.yml`)
+- **Triggers**: Pull request to any branch
+- **Jobs**: build, test, lint, validate-bicep
+- **Secrets**: None (read-only operations)
+- **Outputs**: Test coverage report, Bicep validation results
+
+#### Azure Deployment Workflow (`azure-dev.yml`)
+- **Triggers**: Push to `main`, manual dispatch with environment parameter
+- **Jobs**: provision-infrastructure, migrate-database, deploy-apps, smoke-tests
+- **Secrets**: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID` (OIDC)
+- **Environments**: `development`, `production` (with approval required)
+
+#### Benchmark Workflow (`benchmark.yml`)
+- **Triggers**: Scheduled (nightly), manual dispatch
+- **Jobs**: run-benchmarks, compare-baseline
+- **Outputs**: Performance report artifact
+
+---
+
+## Deployment Artifact
+
+### ContainerImage
+
+Represents a built Docker container image ready for deployment.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `repository` | `string` | e.g., `ghcr.io/username/taskify-api` |
+| `tag` | `string` | e.g., `1.0.0`, `sha-abc123`, `main-20260306-1234` |
+| `digest` | `string` | SHA256 digest for immutable reference |
+| `buildContext` | `string` | Path to Dockerfile context |
+| `platform` | `string` | `linux/amd64` |
+
+**Tagging strategy**:
+- **Development**: `dev-{git-sha-short}` (e.g., `dev-abc123`)
+- **Production**: `v{version}` or `prod-{git-sha-short}` (e.g., `v1.0.0`)
+- **Latest**: `latest` tag updated on successful production deployment
+
+**Image sources**:
+- Taskify.Api → `ghcr.io/{org}/taskify-api`
+- Taskify.Web → `ghcr.io/{org}/taskify-web`
+
+---
+
+## Configuration Values
+
+### Environment-Specific Parameters
+
+Each deployment environment has specific parameter values defined in `infra/main.parameters.{env}.json`:
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {"value": "dev"},
+    "location": {"value": "eastus"},
+    "containerAppCpu": {"value": "0.25"},
+    "containerAppMemory": {"value": "0.5Gi"},
+    "containerAppMinReplicas": {"value": 0},
+    "postgresqlSkuName": {"value": "Standard_B1ms"},
+    "postgresqlTier": {"value": "Burstable"},
+    "postgresqlStorageGB": {"value": 32},
+    "postgresqlHighAvailability": {"value": "Disabled"}
+  }
+}
+```
+
+**Parameter overrides by environment**:
+
+| Parameter | Development | Production |
+|-----------|-------------|------------|
+| `containerAppCpu` | 0.25 | 1.0 |
+| `containerAppMemory` | 0.5Gi | 2Gi |
+| `containerAppMinReplicas` | 0 | 1 |
+| `postgresqlSkuName` | Standard_B1ms | Standard_D2s_v3 |
+| `postgresqlTier` | Burstable | GeneralPurpose |
+| `postgresqlStorageGB` | 32 | 128 |
+| `postgresqlHighAvailability` | Disabled | ZoneRedundant |
+
+---
+
+## Resource Naming Conventions
+
+All Azure resources follow consistent naming patterns:
+
+| Resource Type | Pattern | Example |
+|---------------|---------|---------|
+| Resource Group | `rg-{app}-{env}` | `rg-taskify-dev` |
+| Container Apps Environment | `cae-{app}-{env}` | `cae-taskify-prod` |
+| Container App | `ca-{app}-{service}-{env}` | `ca-taskify-api-dev` |
+| PostgreSQL Server | `psql-{app}-{env}-{hash}` | `psql-taskify-dev-a1b2` |
+| Key Vault | `kv-{app}-{env}-{hash}` | `kv-taskify-prod-x9y8` |
+| Application Insights | `appi-{app}-{env}` | `appi-taskify-dev` |
+| Log Analytics Workspace | `law-{app}-{env}` | `law-taskify-prod` |
+
+**Hash suffix**: Added to globally unique resources (Key Vault, PostgreSQL) to avoid naming conflicts. Generated from resource group ID or specified explicitly.
+
+---
+
+## State Management
+
+### Infrastructure State
+
+- **Source of Truth**: Bicep templates in Git repository
+- **Deployed State**: Azure Resource Manager (ARM) tracks deployed resources
+- **azd State**: Local `.azure/{env}/.env` files store environment configuration
+- **Drift Detection**: Compare deployed resources with Bicep templates
+
+### Application State
+
+- **Database Schema**: Managed by Entity Framework Core migrations
+- **Migration History**: `__EFMigrationsHistory` table in PostgreSQL
+- **Deployment**: Taskify.Migrator runs migrations before application deployment
+
+### Secrets State
+
+- **Current Values**: Azure Key Vault (encrypted at rest)
+- **Rotation Policy**: Document manual rotation procedure (automated rotation future work)
+- **Backup**: Soft-delete enabled; 90-day recovery window
+
+---
+
+## Relationships
+
+```
+DeploymentEnvironment
+  ├─ AzureContainerAppsEnvironment
+  │   ├─ ContainerApp (Taskify.Api)
+  │   └─ ContainerApp (Taskify.Web)
+  ├─ AzurePostgreSQLServer
+  │   └─ Database (taskify)
+  ├─ AzureKeyVault
+  │   ├─ Secret (postgresql-connection-string)
+  │   ├─ Secret (postgresql-admin-password)
+  │   └─ Secret (applicationinsights-connection-string)
+  ├─ ApplicationInsights
+  │   └─ LogAnalyticsWorkspace
+  └─ ResourceGroup (contains all resources)
+
+GitHubActionsWorkflow
+  ├─ BuildJob → ContainerImage
+  ├─ TestJob → Validates code
+  ├─ ProvisionJob → Creates/updates DeploymentEnvironment
+  └─ DeployJob → Updates ContainerApps with new ContainerImages
+```
+
+---
+
+## Summary
+
+This data model defines the deployment infrastructure rather than application data. Key entities:
+- **DeploymentEnvironment**: Represents a complete Azure environment (dev/staging/prod)
+- **AzureContainerApp**: Microservice deployment unit (API and Web)
+- **AzurePostgreSQLServer**: Managed database service
+- **AzureKeyVault**: Secrets management
+- **ApplicationInsights**: Monitoring and telemetry
+- **GitHubActionsWorkflow**: CI/CD pipeline definitions
+- **ContainerImage**: Deployable artifact
+
+All entities are defined declaratively in Bicep and managed through azd + GitHub Actions.
