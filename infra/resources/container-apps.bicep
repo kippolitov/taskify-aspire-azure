@@ -138,7 +138,7 @@ resource taskifyApiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'http://+:8080'
             }
             {
-              name: 'ConnectionStrings__DefaultConnection'
+              name: 'ConnectionStrings__taskifydb'
               secretRef: 'postgresql-connection-string'
             }
             {
@@ -218,11 +218,11 @@ resource taskifyWebContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'http://+:8080'
             }
             {
-              name: 'services__api__http__0'
+              name: 'services__taskify-api__http__0'
               value: 'https://${taskifyApiContainerApp.properties.configuration.ingress.fqdn}'
             }
             {
-              name: 'services__api__https__0'
+              name: 'services__taskify-api__https__0'
               value: 'https://${taskifyApiContainerApp.properties.configuration.ingress.fqdn}'
             }
             {
