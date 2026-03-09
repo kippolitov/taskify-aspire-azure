@@ -95,6 +95,17 @@ resource postgresqlFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firew
   }
 }
 
+// Firewall rule for GitHub Actions and external access (dev only)
+// For production, restrict to specific IP ranges or use Private Endpoints
+resource postgresqlFirewallRulePublic 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = if (environmentName == 'dev') {
+  parent: postgresqlServer
+  name: 'AllowPublicAccess'
+  properties: {
+    startIpAddress: '0.0.0.1'
+    endIpAddress: '255.255.255.254' // Allow all public IPs for dev environment
+  }
+}
+
 // === OUTPUTS ===
 
 @description('PostgreSQL server FQDN')
