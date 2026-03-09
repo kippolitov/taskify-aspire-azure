@@ -93,12 +93,37 @@ jobs:
         id: db-connection
         run: |
           echo "Retrieving PostgreSQL connection string from azd outputs..."
+          
+          # Try to get connection string from azd output
           CONNECTION_STRING=$(azd env get-values --output json | jq -r '.POSTGRESQL_CONNECTION_STRING // empty')
           
           if [ -z "$CONNECTION_STRING" ]; then
-            echo "Warning: Connection string not found in azd outputs"
-            # Fallback: construct from environment variables
-            CONNECTION_STRING="Host=psql-taskify-${{ inputs.environment || 'dev' }}.postgres.database.azure.com;Database=taskify;Username=taskifyadmin;Password=${{ secrets.POSTGRESQL_ADMIN_PASSWORD }};SSL Mode=Require"
+            echo "Connection string not in azd outputs, constructing from server FQDN..."
+            
+            # Get PostgreSQL server FQDN from azd outputs
+            PG_FQDN=$(azd env get-values --output json | jq -r '.postgresqlServerFqdn // empty')
+            
+            if [ -z "$PG_FQDN" ]; then
+              echo "Server FQDN not found, querying Azure..."
+              # Find the PostgreSQL server in the resource group
+              ENV_NAME="${{ inputs.environment || 'dev' }}"
+              PG_FQDN=$(az postgres flexible-server list \
+                --resource-group "rg-${ENV_NAME}" \
+                --query "[?starts_with(name, 'psql-taskify-')].fullyQualifiedDomainName" \
+                -o tsv | head -n 1)
+            fi
+            
+            if [ -z "$PG_FQDN" ]; then
+              echo "Error: Could not find PostgreSQL server"
+              exit 1
+            fi
+            
+            echo "Using PostgreSQL server: $PG_FQDN"
+            CONNECTION_STRING="Host=${PG_FQDN};Database=taskify;Username=taskifyadmin;Password=${{ secrets.POSTGRESQL_ADMIN_PASSWORD }};SSL Mode=Require;Trust Server Certificate=true"
+          else
+            # Extract hostname from connection string for logging (without password)
+            PG_HOST=$(echo "$CONNECTION_STRING" | grep -oP 'Host=\K[^;]+' || echo "unknown")
+            echo "Using PostgreSQL server: $PG_HOST"
           fi
           
           echo "::add-mask::$CONNECTION_STRING"
@@ -107,6 +132,10 @@ jobs:
       - name: Run database migrations
         run: |
           echo "Running EF Core migrations..."
+          
+          # Wait a moment for DNS propagation after provisioning
+          sleep 5
+          
           dotnet run --project src/Taskify.Migrator
         env:
           ConnectionStrings__DefaultConnection: ${{ steps.db-connection.outputs.connection-string }}

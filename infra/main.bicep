@@ -169,6 +169,13 @@ output taskifyWebUrl string = containerApps.outputs.taskifyWebUrl
 @description('PostgreSQL server FQDN')
 output postgresqlServerFqdn string = postgresql.outputs.postgresqlServerFqdn
 
+@description('PostgreSQL database name')
+output postgresqlDatabaseName string = postgresql.outputs.postgresqlDatabaseName
+
+@description('PostgreSQL connection string (for migrations)')
+@secure()
+output POSTGRESQL_CONNECTION_STRING string = postgresql.outputs.postgresqlConnectionString
+
 // Temporarily disabled - re-enable when Key Vault module is uncommented
 // @description('Key Vault URI')
 // output keyVaultUri string = keyVault.outputs.keyVaultUri
