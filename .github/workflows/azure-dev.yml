@@ -23,7 +23,7 @@ jobs:
   deploy-to-azure:
     name: Deploy to Azure
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment == 'prod' && 'production' || 'development' }}
+    environment: ${{ inputs.environment == 'prod' && 'production' || '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
