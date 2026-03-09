@@ -51,26 +51,26 @@ az role assignment create \
 echo "Contributor role assigned to Service Principal"
 ```
 
-### Step 4: Create Federated Identity Credential for Development Environment
+### Step 4: Create Federated Identity Credential for Main Branch
 
 ```bash
-# Create credential for 'development' GitHub environment
+# Create credential for main branch deployments (dev environment)
 az ad app federated-credential create \
   --id $APP_ID \
   --parameters '{
-    "name": "github-deploy-development",
+    "name": "github-deploy-main-branch",
     "issuer": "https://token.actions.githubusercontent.com",
-    "subject": "repo:'"$REPO_OWNER"'/'"$REPO_NAME"':environment:development",
+    "subject": "repo:'"$REPO_OWNER"'/'"$REPO_NAME"':ref:refs/heads/main",
     "audiences": ["api://AzureADTokenExchange"]
   }'
 
-echo "Federated credential created for development environment"
+echo "Federated credential created for main branch deployments"
 ```
 
 ### Step 5: (Optional) Create Federated Credential for Production Environment
 
 ```bash
-# Create credential for 'production' GitHub environment
+# Create credential for 'production' GitHub environment (manual deployments)
 az ad app federated-credential create \
   --id $APP_ID \
   --parameters '{
@@ -82,6 +82,10 @@ az ad app federated-credential create \
 
 echo "Federated credential created for production environment"
 ```
+
+**Note**: The workflow requires **both** credentials:
+- **Main branch credential**: For automatic dev deployments on push to main
+- **Production environment credential**: For manual production deployments via workflow_dispatch
 
 ### Step 6: Get Required IDs
 
@@ -166,33 +170,23 @@ Add this as GitHub secret `POSTGRESQL_ADMIN_PASSWORD`.
 
 GitHub Environments provide deployment protection rules and environment-specific secrets.
 
-### Step 1: Create Development Environment
+### Create Production Environment (Optional but Recommended)
 
 1. Go to **Settings** → **Environments**
 2. Click **New environment**
-3. Name: `development`
+3. Name: `production`
 4. Click **Configure environment**
 5. **Protection rules**:
-   - ❌ **Do NOT** require reviewers (auto-deploy on push to main)
-   - ✅ **Deployment branches**: Selected branches only → `main`
-6. Click **Save protection rules**
-
-**Purpose**: Automatic deployment to development environment on push to `main` branch.
-
-### Step 2: Create Production Environment (Optional for Future Use)
-
-1. Click **New environment**
-2. Name: `production`
-3. Click **Configure environment**
-4. **Protection rules**:
    - ✅ **Required reviewers**: Add yourself and/or team members (1+ approvals)
    - ✅ **Wait timer**: 0 minutes (or add delay for final checks)
    - ✅ **Deployment branches**: Selected branches only → `main`
-5. Click **Save protection rules**
+6. Click **Save protection rules**
 
 **Purpose**: Manual approval gate for production deployments via `workflow_dispatch`.
 
-### Step 3: Verify Environment Configuration
+**Note**: The workflow does **not** use a "development" environment. Dev deployments automatically run when pushing to the `main` branch without any environment gates.
+
+### Verify Environment Configuration
 
 ```bash
 # Test GitHub Actions workflow permissions

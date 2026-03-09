@@ -54,21 +54,20 @@ jobs:
           # Set Azure subscription and location
           azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azd env set AZURE_LOCATION eastus2
+          
+          # Copy environment-specific parameter file if it exists
+          # azd automatically uses infra/main.parameters.json
+          if [ -f "infra/main.parameters.$ENV_NAME.json" ]; then
+            echo "Using environment-specific parameters from: infra/main.parameters.$ENV_NAME.json"
+            cp "infra/main.parameters.$ENV_NAME.json" "infra/main.parameters.json"
+          else
+            echo "No environment-specific parameter file found, using defaults"
+          fi
         env:
           AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
 
       - name: Provision infrastructure
-        run: |
-          ENV_NAME="${{ inputs.environment || 'dev' }}"
-          
-          # Use environment-specific parameter file if it exists
-          if [ -f "infra/main.parameters.$ENV_NAME.json" ]; then
-            echo "Using parameter file: infra/main.parameters.$ENV_NAME.json"
-            azd provision --no-prompt --parameters "infra/main.parameters.$ENV_NAME.json"
-          else
-            echo "No environment-specific parameter file found, using defaults"
-            azd provision --no-prompt
-          fi
+        run: azd provision --no-prompt
         env:
           AZURE_ENV_NAME: ${{ inputs.environment || 'dev' }}
           POSTGRESQL_ADMIN_PASSWORD: ${{ secrets.POSTGRESQL_ADMIN_PASSWORD }}
