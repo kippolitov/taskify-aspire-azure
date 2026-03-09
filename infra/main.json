@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "15349984853478628426"
+      "templateHash": "12579752445530939594"
     }
   },
   "parameters": {
@@ -977,7 +977,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "16614528904899144010"
+              "templateHash": "13380476568517180953"
             }
           },
           "parameters": {
@@ -1169,7 +1169,7 @@
                           "value": "http://+:8080"
                         },
                         {
-                          "name": "ConnectionStrings__DefaultConnection",
+                          "name": "ConnectionStrings__taskifydb",
                           "secretRef": "postgresql-connection-string"
                         },
                         {
@@ -1253,11 +1253,11 @@
                           "value": "http://+:8080"
                         },
                         {
-                          "name": "services__api__http__0",
+                          "name": "services__taskify-api__http__0",
                           "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn)]"
                         },
                         {
-                          "name": "services__api__https__0",
+                          "name": "services__taskify-api__https__0",
                           "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('ca-taskify-api-{0}-{1}', parameters('environmentName'), parameters('uniqueId'))), '2024-03-01').configuration.ingress.fqdn)]"
                         },
                         {
