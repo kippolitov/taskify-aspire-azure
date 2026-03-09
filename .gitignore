@@ -50,6 +50,9 @@ secrets/
 # Azure Developer CLI (azd) - environment-specific secrets
 .azure/
 
+# Azure Bicep - dynamically generated parameter file (copied from env-specific files)
+infra/main.parameters.json
+
 # Azure Functions (if added in future)
 local.settings.json
 __blobstorage__/
