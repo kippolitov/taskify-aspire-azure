@@ -60,11 +60,17 @@ jobs:
           # Select or create environment
           azd env select $ENV_NAME || azd env new $ENV_NAME
           
-          # Set Azure subscription and location
+          # Set Azure subscription, location, and resource group
           azd env set AZURE_SUBSCRIPTION_ID ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azd env set AZURE_LOCATION eastus2
+          azd config set defaults.subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azd config set defaults.location eastus2
           
-          # Set PostgreSQL admin password as Bicep parameter
+          # Use existing resource group
+          azd env set AZURE_RESOURCE_GROUP "rg-${ENV_NAME}"
+          
+          # Set required Bicep parameters
+          azd env config set infra.parameters.environmentName "$ENV_NAME"
           azd env config set infra.parameters.postgresqlAdminPassword "${{ secrets.POSTGRESQL_ADMIN_PASSWORD }}"
           
           # Copy environment-specific parameter file if it exists
