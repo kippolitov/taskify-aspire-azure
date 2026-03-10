@@ -149,13 +149,21 @@ jobs:
         id: deployment-urls
         run: |
           echo "Retrieving deployment URLs..."
-          API_URL=$(azd env get-values --output json | jq -r '.TASKIFY_API_URL // empty')
-          WEB_URL=$(azd env get-values --output json | jq -r '.TASKIFY_WEB_URL // empty')
+          API_URL=$(azd env get-values --output json | jq -r '.SERVICE_API_ENDPOINT_URL // empty')
+          WEB_URL=$(azd env get-values --output json | jq -r '.SERVICE_WEB_ENDPOINT_URL // empty')
           
           if [ -z "$API_URL" ] || [ -z "$WEB_URL" ]; then
             echo "Warning: Deployment URLs not found in azd outputs"
-            # URLs will be available after Container Apps are deployed
-            echo "Deployment may still be in progress. Check Azure Portal."
+            echo "Trying alternative output names..."
+            API_URL=$(azd env get-values --output json | jq -r '.taskifyApiUrl // empty')
+            WEB_URL=$(azd env get-values --output json | jq -r '.taskifyWebUrl // empty')
+          fi
+          
+          if [ -z "$API_URL" ] || [ -z "$WEB_URL" ]; then
+            echo "Warning: Deployment URLs still not found. Check Azure Portal."
+          else
+            echo "Found API URL: $API_URL"
+            echo "Found Web URL: $WEB_URL"
           fi
           
           echo "api-url=$API_URL" >> $GITHUB_OUTPUT
