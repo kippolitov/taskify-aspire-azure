@@ -8,7 +8,7 @@ set -e
 # Configuration - Replace these values
 APP_NAME="GitHub-Taskify"  # Your App Registration display name
 GITHUB_ORG="kippolitov"
-GITHUB_REPO="speckit-taskify-copilot"
+GITHUB_REPO="taskify-aspire-azure"
 
 echo "🔍 Finding App Registration: $APP_NAME"
 APP_OBJECT_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].id" -o tsv)
