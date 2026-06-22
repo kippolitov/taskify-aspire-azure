@@ -1,15 +1,5 @@
 {
     "dotnet.defaultSolution": "Taskify.slnx",
-    "dotnetAcquisitionExtension.existingDotnetPath": [
-        {
-            "extensionId": "ms-dotnettools.csdevkit",
-            "path": "/usr/local/share/dotnet/dotnet"
-        },
-        {
-            "extensionId": "ms-dotnettools.csharp",
-            "path": "/usr/local/share/dotnet/dotnet"
-        }
-    ],
     "chat.promptFilesRecommendations": {
         "speckit.constitution": true,
         "speckit.specify": true,
