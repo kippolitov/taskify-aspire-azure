@@ -1,4 +1,4 @@
-# speckit-taskify-copilot Development Guidelines
+# taskify-aspire-azure Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2026-03-05
 
