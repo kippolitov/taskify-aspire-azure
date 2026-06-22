@@ -9,8 +9,5 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
   </PropertyGroup>
 
-  <!-- SonarAnalyzer: applies to all projects; PrivateAssets prevents transitive propagation -->
-  <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.*" PrivateAssets="all" />
-  </ItemGroup>
+  <!-- SonarAnalyzer is applied to all projects via GlobalPackageReference in Directory.Packages.props -->
 </Project>
