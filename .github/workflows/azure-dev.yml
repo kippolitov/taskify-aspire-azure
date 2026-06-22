@@ -162,8 +162,8 @@ jobs:
           if [ -z "$API_URL" ] || [ -z "$WEB_URL" ]; then
             echo "Warning: Deployment URLs still not found. Check Azure Portal."
           else
-            echo "Found API URL: $API_URL"
-            echo "Found Web URL: $WEB_URL"
+            # Do not print endpoints to the public run log; pass them via step outputs only.
+            echo "Deployment URLs retrieved successfully (see Azure Portal for endpoints)."
           fi
           
           echo "api-url=$API_URL" >> $GITHUB_OUTPUT
@@ -178,27 +178,13 @@ jobs:
       - name: Publish deployment summary
         if: always()
         run: |
+          # Note: this summary is publicly visible on a public repo.
+          # Deployment endpoints and the subscription ID are intentionally omitted;
+          # retrieve them from the Azure Portal or `azd env get-values`.
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: \`${{ inputs.environment || 'dev' }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Subscription**: \`${{ secrets.AZURE_SUBSCRIPTION_ID }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Location**: \`eastus2\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          API_URL="${{ steps.deployment-urls.outputs.api-url }}"
-          WEB_URL="${{ steps.deployment-urls.outputs.web-url }}"
-          
-          if [ -n "$API_URL" ]; then
-            echo "- **API URL**: [$API_URL]($API_URL)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- **API URL**: ⏳ Deployment in progress" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ -n "$WEB_URL" ]; then
-            echo "- **Web URL**: [$WEB_URL]($WEB_URL)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- **Web URL**: ⏳ Deployment in progress" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ✅ Deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Endpoints omitted from the public log — see the Azure Portal for service URLs._" >> $GITHUB_STEP_SUMMARY

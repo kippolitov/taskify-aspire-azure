@@ -9,8 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.2" />
-    <PackageReference Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.1.2" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.Azure.PostgreSQL" />
+    <!-- Pin transitive MessagePack to a patched version (GHSA-hv8m-jj95-wg3x; vulnerable <= 2.5.192) -->
+    <PackageReference Include="MessagePack" />
   </ItemGroup>
 
   <ItemGroup>
