@@ -53,9 +53,7 @@ public static class ServiceDefaultsExtensions
         return builder;
     }
 
-    private static IHostApplicationBuilder AddOpenTelemetryExporters(
-        this IHostApplicationBuilder builder
-    )
+    private static void AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
     {
         var useOtlpExporter = !string.IsNullOrWhiteSpace(
             builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
@@ -65,8 +63,6 @@ public static class ServiceDefaultsExtensions
         {
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
-
-        return builder;
     }
 
     public static IHostApplicationBuilder AddDefaultHealthChecks(
