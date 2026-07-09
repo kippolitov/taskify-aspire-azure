@@ -11,6 +11,7 @@
         ".specify/scripts/bash/": true,
         ".specify/scripts/powershell/": true
     },
-    "sarif-viewer.connectToGithubCodeScanning": "off"
+    "sarif-viewer.connectToGithubCodeScanning": "off",
+    "codeQL.githubDatabase.download": "never"
 }
 
