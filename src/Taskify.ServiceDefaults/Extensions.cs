@@ -42,7 +42,10 @@ public static class ServiceDefaultsExtensions
         builder
             .Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
-                metrics.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation()
+                metrics
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddPrometheusExporter()
             )
             .WithTracing(tracing =>
                 tracing.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation()
@@ -83,6 +86,11 @@ public static class ServiceDefaultsExtensions
             "/alive",
             new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") }
         );
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapPrometheusScrapingEndpoint();
+        }
 
         return app;
     }
