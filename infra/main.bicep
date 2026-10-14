@@ -64,6 +64,9 @@ param postgresqlBackupRetentionDays int = 7
 @description('Azure region for the PostgreSQL server (defaults to location; override when the main region has no Flexible Server capacity)')
 param postgresqlLocation string = location
 
+@description('Azure region for Azure Managed Redis (defaults to location; override when the main region does not offer the SKU to this subscription)')
+param redisLocation string = location
+
 @description('Container image for Taskify.Api')
 param taskifyApiImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp' // Placeholder
 
@@ -132,7 +135,7 @@ module redis './resources/redis.bicep' = {
   name: 'redis'
   params: {
     environmentName: environmentName
-    location: location
+    location: redisLocation
     uniqueId: uniqueId
     highAvailability: environmentName == 'prod'
   }
