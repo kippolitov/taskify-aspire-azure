@@ -58,7 +58,7 @@ The stack is unchanged apart from Redis. The schema is unchanged. Every choice b
 | Gate | Requirement | Status before this feature | How this plan meets it | Result |
 |---|---|---|---|---|
 | I. Code quality | Linting and static analysis configured; complexity enforced in CI; naming documented | Analyzers and warnings-as-errors are on; `dotnet format` runs in CI; naming rules are in `.editorconfig`. Complexity ≤ 10 is **not** enforced: SonarAnalyzer S1541 is off by default. | P1 enables S1541 in `.editorconfig`, which warnings-as-errors makes a build failure (research R5). | PASS, with a P1 action |
-| II. Test-driven | Framework configured; TDD active; coverage enforced in CI; contract tests for new API surface; one integration test per story | xUnit and bUnit are configured. Coverage is collected but **not enforced**. No integration test touches real PostgreSQL. | P1 builds the real-database harness first (research R1) and the 80% gate (R4), so every later story starts with failing tests. Contract tests: the OpenAPI test (R8), and a hub contract test that sends through `ITaskifyClient`. Each story has its own integration tests (see "Design by story"). Critical paths (identity, persistence, Task changes) are reported against the 95% target. | PASS, with P1 actions |
+| II. Test-driven | Framework configured; TDD active; coverage enforced in CI; contract tests for new API surface; one integration test per story | xUnit and bUnit are configured. Coverage is collected but **not enforced**. No integration test touches real PostgreSQL. | P1 builds the real-database harness first (research R1) and two coverage gates in CI (R4): 80% overall, and 95% on critical paths (the API's `Identity`, `Services` and `Endpoints` code, covering auth, data persistence and Task changes). Every later story starts with failing tests. Contract tests: the OpenAPI test (R8), and a hub contract test that sends through `ITaskifyClient`. Each story has its own integration tests (see "Design by story"). | PASS, with P1 actions |
 | III. UX consistency | Design tokens imported; accessibility tooling configured; design spec linked | Tokens exist (`wwwroot/css/tokens.css`). No accessibility tooling in CI. | This feature changes no UI (FR-041). The only markup changes are `@key` and `[PersistentState]`, which render nothing new. Existing bUnit tests and SC-012 guard against regressions. The missing accessibility tooling is a pre-existing gap, logged below. | PASS, with a logged gap |
 | IV. Performance | Benchmark suite exists; CI has a performance regression step with budgets | BenchmarkDotNet runs weekly and does not block PRs. It benchmarks the InMemory provider, which measures nothing real. | P1 points the benchmarks at PostgreSQL and adds the 500 × 20 task-list benchmark (SC-004). A per-PR regression gate that blocks a >10% slowdown is a pre-existing gap, logged below. | PASS, with a logged gap |
 
@@ -167,7 +167,7 @@ Each story starts with failing tests (TDD) and ends with green CI, updated READM
 4. **Live-update proof (FR-005)**: a `HubTestClient` (long polling over `TestServer`) joins a board and receives `TaskMoved`.
 5. **Single schema writer (FR-006, research R2)**: remove `MigrateAsync` from the API. `SchemaOwnershipTests` starts the API against an empty database and asserts that `__EFMigrationsHistory` does not exist afterwards.
 6. **Images (FR-007, research R3)**: copy `Directory.Packages.props` in both Dockerfiles, and add a `docker build` job for both images to `ci.yml`.
-7. **Coverage gate (FR-008, research R4)**: `--settings coverage.runsettings`, ReportGenerator merge, fail below 80% and print the figure.
+7. **Coverage gates (FR-008, constitution Principle II, research R4)**: `--settings coverage.runsettings` and a ReportGenerator merge. Fail below 80% overall, and below 95% on the API's `Identity`, `Services` and `Endpoints` code. Print both figures.
 8. **Complexity (gate I, research R5)**: enable S1541.
 9. **Benchmarks (gate IV)**: point them at the PostgreSQL container, and remove the InMemory provider from every project (FR-002).
 10. **README (FR-010)**: describe the real-database tests.
@@ -273,9 +273,9 @@ These follow `.agents/skills/domain-modeling/ADR-FORMAT.md`. Each is written in 
 
 ## Complexity Tracking
 
-These are not violations introduced by this feature. They are pre-existing gaps against the constitution's gates, logged here as Technical Quality Gates require. The remediation dates are proposals for the maintainer to confirm.
+These are not violations introduced by this feature. They are pre-existing gaps against the constitution's gates, logged here as Technical Quality Gates require, each with a confirmed remediation date.
 
 | Gap | Why it stays open in this feature | Remediation |
 |---|---|---|
-| No accessibility tooling (axe-core) in CI (gate III) | This feature changes no UI (FR-041). Adding tooling is UI-test infrastructure of its own. | A separate feature before the next UI change; proposed by 2027-01-31. |
-| Benchmarks run weekly and do not block PRs on a >10% regression (gate IV) | A stable per-PR comparison needs a baseline store and noise control, which is out of this spec's scope. SC-004 is still measured. | A separate feature: a benchmark comparison job on PRs against `main`; proposed by 2027-01-31. |
+| No accessibility tooling (axe-core) in CI (gate III) | This feature changes no UI (FR-041). Adding tooling is UI-test infrastructure of its own. | A separate feature before the next UI change, by 2027-01-31. |
+| Benchmarks run weekly and do not block PRs on a >10% regression (gate IV) | A stable per-PR comparison needs a baseline store and noise control, which is out of this spec's scope. SC-004 is still measured. | A separate feature: a benchmark comparison job on PRs against `main`, by 2027-01-31. |

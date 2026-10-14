@@ -87,6 +87,6 @@ The automated equivalents run in CI under `tests/Taskify.Api.Tests/Identity/`.
 
 ## Closing check for every story
 
-- The CI pipeline is green on the PR, including tests, the coverage gate, image builds, `dotnet format` and the Bicep build.
+- The CI pipeline is green on the PR, including tests, both coverage gates (80% overall, 95% critical paths), image builds, `dotnet format` and the Bicep build.
 - Read the README line by line against the repository and the deployed system: there are no false claims about testing, monitoring, health checks or Notifications (SC-011).
 - Every acceptance scenario in [specs/001-create-taskify/spec.md](../001-create-taskify/spec.md) still passes (SC-012).

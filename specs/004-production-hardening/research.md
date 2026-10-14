@@ -57,8 +57,9 @@ Two findings change the design described in [docs/hardening-modernization-plan.m
 - Keep `coverlet.collector`, and run `dotnet test` with `--settings coverage.runsettings`.
 - Merge the reports from both test projects with ReportGenerator, added as a local tool in `dotnet-tools.json`, and write a `JsonSummary`.
 - A short CI step fails when the summary's line coverage is below 80, and prints the figure (FR-008).
+- A second ReportGenerator run over the same reports, filtered to `Taskify.Api` classes in `Identity`, `Services` and `Endpoints`, fails below 95. These are the constitution's critical paths: auth, data persistence and Task mutation flows (Principle II, Technical Quality Gate 2).
 
-**Rationale**: The collector does not enforce thresholds, and "overall" coverage needs the two test projects merged. ReportGenerator does both, and the repo already uses local tools.
+**Rationale**: The collector does not enforce thresholds, and "overall" coverage needs the two test projects merged. ReportGenerator does both, and its class filters scope the critical-path gate without a second test run. The repo already uses local tools.
 
 **Alternatives considered**:
 - **`coverlet.msbuild` with `/p:Threshold`**: applies per test project, not overall.
