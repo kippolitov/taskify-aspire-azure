@@ -78,7 +78,7 @@ Resources provisioned: Azure Container Apps environment, PostgreSQL Flexible Ser
 
 The CI/CD pipeline uses **OIDC federation** — no service principal secrets are stored anywhere. GitHub Actions authenticates to Azure via a federated identity credential tied to the repository and branch. The pipeline:
 
-1. Runs the full test suite — xUnit + bUnit + **Testcontainers** (real PostgreSQL in Docker; no mocked database layer)
+1. Runs the test suite — xUnit for the API (against the EF Core in-memory provider) and bUnit for the Blazor components
 2. Builds and pushes Docker images via `azd`
 3. Rolls out to Azure Container Apps
 4. Runs smoke tests against the live health endpoints
