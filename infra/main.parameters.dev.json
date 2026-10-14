@@ -43,6 +43,9 @@
     },
     "postgresqlLocation": {
       "value": "centralus"
+    },
+    "redisLocation": {
+      "value": "centralus"
     }
   }
 }

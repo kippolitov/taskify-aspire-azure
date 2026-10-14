@@ -40,6 +40,9 @@
     },
     "postgresqlBackupRetentionDays": {
       "value": 35
+    },
+    "redisLocation": {
+      "value": "centralus"
     }
   }
 }
