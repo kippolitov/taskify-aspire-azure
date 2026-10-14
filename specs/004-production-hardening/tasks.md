@@ -512,7 +512,7 @@ description: "Task list for 004 Production Hardening"
   - Remove "Notifications for task and comment activity" from "Features".
   - Re-check the "scale-to-zero … under 5 s cold start" claim, and state only what is configured: dev scales to zero; prod keeps one web replica.
 - [X] T106 [US4] Validate US4 locally: run [quickstart.md § P4 → Locally](quickstart.md#p4--safe-to-run-at-scale), steps 1–4.
-- [ ] T107 [US4] Validate US4 in Azure dev: `azd provision` with `what-if` review, then deploy and run [quickstart.md § P4 → In Azure dev](quickstart.md#p4--safe-to-run-at-scale), steps 1–7. Record the Application Insights transaction screenshot and the probe-restart timing (SC-007, SC-009) in the PR description.
+- [X] T107 [US4] Validate US4 in Azure dev: `azd provision` with `what-if` review, then deploy and run [quickstart.md § P4 → In Azure dev](quickstart.md#p4--safe-to-run-at-scale), steps 1–7. Record the Application Insights transaction screenshot and the probe-restart timing (SC-007, SC-009) in the PR description.
 
 **Checkpoint**: All four stories are complete.
 
@@ -523,8 +523,8 @@ description: "Task list for 004 Production Hardening"
 - [X] T108 [P] Add a line under the title of `specs/001-create-taskify/contracts/rest-api.md` and `specs/001-create-taskify/contracts/signalr-hub.md`: "Superseded by `specs/004-production-hardening/contracts/`".
 - [X] T109 [P] Set **Status** in `docs/hardening-modernization-plan.md` to "Implemented by `specs/004-production-hardening/`". List the decisions that changed in implementation, which are research R6 and R15.
 - [X] T110 Add the overall and critical-path coverage figures from the `test` job summary (gates from T022 and T023) to the PR description, as the constitution's Development Workflow requires ("Test evidence: coverage delta and test counts reported by CI").
-- [ ] T111 Review `README.md` statement by statement against the repository and the deployed dev environment (SC-011). Fix any remaining false claim.
-- [ ] T112 Run the acceptance scenarios in `specs/001-create-taskify/spec.md` against the dev deployment, with two browsers, and confirm no visible change (FR-041, SC-012).
+- [X] T111 Review `README.md` statement by statement against the repository and the deployed dev environment (SC-011). Fix any remaining false claim.
+- [X] T112 Run the acceptance scenarios in `specs/001-create-taskify/spec.md` against the dev deployment, with two browsers, and confirm no visible change (FR-041, SC-012).
 - [X] T113 Run `dotnet csharpier format .`, `dotnet format --verify-no-changes`, `dotnet build Taskify.slnx -c Release` (S1541 and CA2016 clean) and `dotnet test Taskify.slnx --settings coverage.runsettings`. All must pass.
 
 ---
