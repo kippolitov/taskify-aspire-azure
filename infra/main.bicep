@@ -56,6 +56,9 @@ param postgresqlHighAvailability string = 'Disabled'
 @description('PostgreSQL backup retention days')
 param postgresqlBackupRetentionDays int = 7
 
+@description('Azure region for the PostgreSQL server (defaults to location; override when the main region has no Flexible Server capacity)')
+param postgresqlLocation string = location
+
 @description('Container image for Taskify.Api')
 param taskifyApiImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp' // Placeholder
 
@@ -103,7 +106,7 @@ module postgresql './resources/postgresql.bicep' = {
   name: 'postgresql'
   params: {
     environmentName: environmentName
-    location: location
+    location: postgresqlLocation
     uniqueId: uniqueId
     administratorLogin: 'taskifyadmin'
     administratorPassword: postgresqlAdminPassword
