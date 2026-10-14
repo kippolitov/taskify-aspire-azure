@@ -139,7 +139,7 @@ description: "Task list for 004 Production Hardening"
 - [X] T025 [US1] Update `README.md` (FR-010):
   - In "DevOps & CI/CD", change pipeline step 1 to describe the actual suite: API tests run against PostgreSQL 16 in Docker through Testcontainers and the full HTTP pipeline; bUnit tests cover the Blazor components; the pipeline enforces an 80% overall and a 95% critical-path line-coverage gate and builds both container images.
   - In "Run tests", add that Docker must be running.
-- [ ] T026 [US1] Validate US1: run every step of [quickstart.md § P1](quickstart.md#p1--trustworthy-verification), including the four deliberate breaks on a throwaway branch (SC-002). Record the outcome in the PR description.
+- [X] T026 [US1] Validate US1: run every step of [quickstart.md § P1](quickstart.md#p1--trustworthy-verification), including the four deliberate breaks on a throwaway branch (SC-002). Record the outcome in the PR description.
 
 **Checkpoint**: US1 is complete. The tests are trustworthy; this is the MVP.
 
@@ -522,7 +522,7 @@ description: "Task list for 004 Production Hardening"
 
 - [X] T108 [P] Add a line under the title of `specs/001-create-taskify/contracts/rest-api.md` and `specs/001-create-taskify/contracts/signalr-hub.md`: "Superseded by `specs/004-production-hardening/contracts/`".
 - [X] T109 [P] Set **Status** in `docs/hardening-modernization-plan.md` to "Implemented by `specs/004-production-hardening/`". List the decisions that changed in implementation, which are research R6 and R15.
-- [ ] T110 Add the overall and critical-path coverage figures from the `test` job summary (gates from T022 and T023) to the PR description, as the constitution's Development Workflow requires ("Test evidence: coverage delta and test counts reported by CI").
+- [X] T110 Add the overall and critical-path coverage figures from the `test` job summary (gates from T022 and T023) to the PR description, as the constitution's Development Workflow requires ("Test evidence: coverage delta and test counts reported by CI").
 - [ ] T111 Review `README.md` statement by statement against the repository and the deployed dev environment (SC-011). Fix any remaining false claim.
 - [ ] T112 Run the acceptance scenarios in `specs/001-create-taskify/spec.md` against the dev deployment, with two browsers, and confirm no visible change (FR-041, SC-012).
 - [X] T113 Run `dotnet csharpier format .`, `dotnet format --verify-no-changes`, `dotnet build Taskify.slnx -c Release` (S1541 and CA2016 clean) and `dotnet test Taskify.slnx --settings coverage.runsettings`. All must pass.
