@@ -2,6 +2,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres").AddDatabase("taskifydb");
 
+// SignalR backplane, so live updates reach viewers on every API instance.
+var redis = builder.AddRedis("redis");
+
+// Signs the Active User's identity. Set it once with:
+// dotnet user-secrets set "Parameters:auth-signing-key" "<32+ random bytes, base64>"
+var authSigningKey = builder.AddParameter("auth-signing-key", secret: true);
+
 var migrate = builder
     .AddProject<Projects.Taskify_Migrator>("taskify-migrate")
     .WithReference(postgres)
@@ -10,7 +17,12 @@ var migrate = builder
 var api = builder
     .AddProject<Projects.Taskify_Api>("taskify-api", launchProfileName: "http")
     .WithReference(postgres)
+    .WithReference(redis)
+    .WithEnvironment("Auth__SigningKey", authSigningKey)
+    .WithEnvironment("Auth__Issuer", "taskify")
+    .WithEnvironment("Auth__Audience", "taskify-api")
     .WaitFor(postgres)
+    .WaitFor(redis)
     .WaitForCompletion(migrate);
 
 builder

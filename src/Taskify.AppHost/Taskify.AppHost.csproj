@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Aspire.AppHost.Sdk/13.1.2">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.Azure.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.Redis" />
     <!-- Pin transitive MessagePack to a patched version (GHSA-hv8m-jj95-wg3x; vulnerable <= 2.5.192) -->
     <PackageReference Include="MessagePack" />
   </ItemGroup>
@@ -20,5 +20,4 @@
     <ProjectReference Include="..\Taskify.Api\Taskify.Api.csproj" />
     <ProjectReference Include="..\Taskify.Web\Taskify.Web.csproj" />
   </ItemGroup>
-
 </Project>

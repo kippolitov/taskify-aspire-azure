@@ -1,6 +1,11 @@
 # Taskify hardening and modernization plan
 
-**Status:** proposal, 2026-10-11. Input for a Spec Kit session (`/speckit.specify`, then `/speckit.plan`). It is not a spec: it records what to change, why, and what "done" means, so the spec session does not have to rediscover it.
+**Status:** Implemented by `specs/004-production-hardening/`. Originally a proposal, 2026-10-11, written as input for a Spec Kit session.
+
+**Decisions that changed in implementation:**
+
+- **Validation across assemblies (research R6).** The request records live in `Taskify.Shared`, so `Taskify.Shared` registers itself with `AddTaskifyContractValidation()`, as the validation generator's documentation requires. On .NET SDK 10.0.301 the API's own `AddValidation()` already covers the records, because they appear as endpoint parameters; the extra registration stays as a guard. See `docs/adr/0001-minimal-apis.md`.
+- **Backplane and affinity (research R15).** A Redis backplane alone still needs sticky sessions on the API. Instead, `BoardHubClient` connects with WebSockets only and `SkipNegotiation`, to an API address resolved through service discovery, so the API needs no affinity. See `docs/adr/0003-redis-signalr-backplane.md`.
 
 ## Goal
 

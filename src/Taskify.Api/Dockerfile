@@ -5,6 +5,7 @@ WORKDIR /source
 # Copy solution and project files
 COPY *.slnx .
 COPY Directory.Build.props .
+COPY Directory.Packages.props .
 COPY src/Taskify.Api/*.csproj ./src/Taskify.Api/
 COPY src/Taskify.Shared/*.csproj ./src/Taskify.Shared/
 COPY src/Taskify.ServiceDefaults/*.csproj ./src/Taskify.ServiceDefaults/

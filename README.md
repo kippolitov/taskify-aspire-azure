@@ -27,7 +27,7 @@ The solution is composed of six projects orchestrated by **.NET Aspire**:
 | `Taskify.Api` | ASP.NET Core REST API + SignalR hub (`TaskifyHub`) |
 | `Taskify.Web` | Blazor Server front end |
 | `Taskify.Migrator` | One-shot EF Core migration runner |
-| `Taskify.Shared` | DTOs and enums shared across service boundary |
+| `Taskify.Shared` | The contract between API and web app: DTOs, request records, real-time messages and the single JSON configuration |
 | `Taskify.ServiceDefaults` | OpenTelemetry, health checks, resilience — one call, all projects |
 
 Real-time board updates use SignalR groups keyed by project ID. When any client moves a task, the API broadcasts to every connected board viewer — no polling.
@@ -39,7 +39,8 @@ var migrate = builder.AddProject<Taskify_Migrator>("taskify-migrate")
     .WithReference(postgres).WaitFor(postgres);
 
 var api = builder.AddProject<Taskify_Api>("taskify-api")
-    .WithReference(postgres).WaitFor(postgres).WaitForCompletion(migrate);
+    .WithReference(postgres).WithReference(redis)
+    .WaitFor(postgres).WaitFor(redis).WaitForCompletion(migrate);
 
 builder.AddProject<Taskify_Web>("taskify-web")
     .WithReference(api).WaitFor(api).WaitForCompletion(migrate);
@@ -74,16 +75,16 @@ Infrastructure is defined as **Bicep** under [`infra/`](infra/) and deployed wit
 azd up   # provisions all Azure resources and deploys both containers
 ```
 
-Resources provisioned: Azure Container Apps environment, PostgreSQL Flexible Server, Key Vault, Application Insights, Log Analytics Workspace, Container Registry.
+Resources provisioned: Azure Container Apps environment, PostgreSQL Flexible Server, Azure Managed Redis (the live-update backplane between API replicas), Application Insights, Log Analytics Workspace, Container Registry. The API is internal to the Container Apps environment; only the web app is public.
 
 The CI/CD pipeline uses **OIDC federation** — no service principal secrets are stored anywhere. GitHub Actions authenticates to Azure via a federated identity credential tied to the repository and branch. The pipeline:
 
-1. Runs the test suite — xUnit for the API (against the EF Core in-memory provider) and bUnit for the Blazor components
+1. Runs the test suite and checks the build — the API tests call the API through its full HTTP pipeline against PostgreSQL 16 in Docker (Testcontainers); bUnit tests cover the Blazor components. The pipeline enforces an 80% overall and a 95% critical-path line-coverage gate, and builds both container images
 2. Builds and pushes Docker images via `azd`
 3. Rolls out to Azure Container Apps
-4. Runs smoke tests against the live health endpoints
+4. Runs smoke tests through the web app: its home page must list the seeded users, its `/health` must return 200, and the API must not be reachable from outside
 
-Container Apps is configured **scale-to-zero** in the dev environment — near-zero cost when idle, under 5 s cold start.
+In dev, both apps scale to zero when idle. In prod, the web app keeps at least one replica, because a Blazor Server session lives in one replica; sticky sessions keep each browser on its replica.
 
 ---
 
@@ -92,12 +93,12 @@ Container Apps is configured **scale-to-zero** in the dev environment — near-z
 OpenTelemetry is wired in from day one through `Taskify.ServiceDefaults`:
 
 - **Traces** — distributed across Blazor → API → EF Core → PostgreSQL, correlated by trace ID
-- **Metrics** — ASP.NET Core + HttpClient instrumentation
-- **Logs** — structured, scoped, exported via OTLP
+- **Metrics** — ASP.NET Core + HttpClient instrumentation, plus `taskify.tasks.moved` (one per Task Status change) and `taskify.broadcasts.failed` on the `Taskify.Api` meter
+- **Logs** — structured, scoped, source-generated (`[LoggerMessage]`)
 
-Locally, all telemetry flows into the **.NET Aspire dashboard** — no extra infrastructure. In Azure, the same OTLP pipeline routes to **Application Insights** with no instrumentation changes between environments.
+Locally, all telemetry flows into the **.NET Aspire dashboard** — no extra infrastructure. In Azure, the Azure Monitor OpenTelemetry distro sends the same traces, metrics and logs to **Application Insights**; it switches on when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set.
 
-Every service exposes `/health/live` and `/health/ready` via `MapDefaultEndpoints()`, consumed by Container Apps readiness and liveness probes.
+Every service exposes `/alive` (liveness: the process responds) and `/health` (readiness: includes the database check in the API) via `MapDefaultEndpoints()`. Container Apps uses `/alive` for the startup and liveness probes and `/health` for the readiness probe, and restarts a replica that stops responding.
 
 ---
 
@@ -105,10 +106,9 @@ Every service exposes `/health/live` and `/health/ready` via `MapDefaultEndpoint
 ## Features
 
 - Kanban board with standard columns (To Do, In Progress, In Review, Done)
-- Five predefined users (one product manager, four engineers) and three sample projects — no login required
+- Five predefined users (one product manager, four engineers) and three sample projects — no login required; the server issues and checks a short-lived identity for the selected user, so no request can act as someone else
 - Task cards with assignment, unlimited comments, and drag-and-drop
-- Real-time board updates across clients via SignalR
-- Notifications for task and comment activity
+- Real-time board updates across clients via SignalR, across every API replica
 
 ## Architecture
 
@@ -118,7 +118,7 @@ Every service exposes `/health/live` and `/health/ready` via `MapDefaultEndpoint
 | `Taskify.Api` | ASP.NET Core Web API, EF Core, SignalR hub |
 | `Taskify.Web` | Blazor front end |
 | `Taskify.Migrator` | Database migration runner |
-| `Taskify.Shared` | Shared DTOs and enums |
+| `Taskify.Shared` | Shared contracts: DTOs, requests, real-time messages, JSON settings |
 | `Taskify.ServiceDefaults` | Aspire service defaults (telemetry, health, resilience) |
 
 **Stack:** .NET 10 / C# · ASP.NET Core · Blazor · Entity Framework Core · PostgreSQL · SignalR · .NET Aspire · Azure Container Apps · Bicep · Azure Developer CLI (azd).
@@ -128,7 +128,7 @@ Every service exposes `/health/live` and `/health/ready` via `MapDefaultEndpoint
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Docker (for the local PostgreSQL container managed by Aspire)
+- Docker (for the local PostgreSQL and Redis containers managed by Aspire)
 
 ### Run locally
 
@@ -136,9 +136,17 @@ Every service exposes `/health/live` and `/health/ready` via `MapDefaultEndpoint
 dotnet run --project src/Taskify.AppHost
 ```
 
-The Aspire dashboard launches and orchestrates the API, web front end, and a PostgreSQL container. Connection strings for local development are wired up by Aspire — no manual configuration needed.
+The Aspire dashboard launches and orchestrates the API, web front end, and PostgreSQL and Redis containers. Connection strings for local development are wired up by Aspire.
+
+Before the first run, set the key that signs the selected user's identity (at least 32 random bytes, base64-encoded). It is stored in your user secrets, never in the repository:
+
+```bash
+dotnet user-secrets set "Parameters:auth-signing-key" "$(openssl rand -base64 32)" --project src/Taskify.AppHost
+```
 
 ### Run tests
+
+Docker must be running: the API tests start PostgreSQL 16 and Redis 7 containers through Testcontainers.
 
 ```bash
 dotnet test
@@ -152,7 +160,7 @@ Infrastructure is defined as Bicep under [`infra/`](infra/) and deployed with th
 azd up
 ```
 
-See [`docs/azure-deployment.md`](docs/azure-deployment.md) and [`docs/github-actions-setup.md`](docs/github-actions-setup.md) for CI/CD and environment setup. Secrets (database passwords, Azure credentials) are supplied at deploy time via GitHub Actions secrets and Azure OIDC — none are stored in the repository.
+See [`docs/azure-deployment.md`](docs/azure-deployment.md) and [`docs/github-actions-setup.md`](docs/github-actions-setup.md) for CI/CD and environment setup. Secrets (the database password, the identity signing key, Azure credentials) are supplied at deploy time via GitHub Actions secrets and Azure OIDC — none are stored in the repository.
 
 ---
 

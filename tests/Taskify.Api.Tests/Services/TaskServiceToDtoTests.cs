@@ -7,6 +7,8 @@ namespace Taskify.Api.Tests.Services;
 
 public class TaskServiceToDtoTests
 {
+    private static readonly Func<TaskItem, TaskDto> ToDto = TaskService.ToDto.Compile();
+
     [Fact]
     public void ToDto_WithNoAssigneeAndNoComments_MapsAllFieldsCorrectly()
     {
@@ -23,7 +25,7 @@ public class TaskServiceToDtoTests
             Comments = [],
         };
 
-        var dto = TaskService.ToDto(task);
+        var dto = ToDto(task);
 
         Assert.Equal(1, dto.Id);
         Assert.Equal(2, dto.ProjectId);
@@ -58,7 +60,7 @@ public class TaskServiceToDtoTests
             Comments = [],
         };
 
-        var dto = TaskService.ToDto(task);
+        var dto = ToDto(task);
 
         Assert.NotNull(dto.Assignee);
         Assert.Equal(5, dto.Assignee.Id);
@@ -99,7 +101,7 @@ public class TaskServiceToDtoTests
             ],
         };
 
-        var dto = TaskService.ToDto(task);
+        var dto = ToDto(task);
 
         Assert.Equal(2, dto.CommentCount);
     }

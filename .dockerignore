@@ -7,6 +7,9 @@
 **/bin/
 **/obj/
 **/out/
+# Windows-style build folders, literal names on macOS and Linux (as in .gitignore)
+**/bin\\*
+**/obj\\*
 
 # NuGet packages
 **/*.nupkg

@@ -31,6 +31,11 @@ param containerAppMinReplicas int = 0
 @description('Maximum replicas for Container Apps')
 param containerAppMaxReplicas int = 10
 
+@minValue(0)
+@maxValue(30)
+@description('Minimum replicas for the web app. A Blazor Server circuit lives in one replica, so prod keeps one warm.')
+param webMinReplicas int = 0
+
 @description('PostgreSQL SKU name')
 @allowed(['Standard_B1ms', 'Standard_B2s', 'Standard_D2s_v3', 'Standard_D4s_v3'])
 param postgresqlSkuName string = 'Standard_B1ms'
@@ -65,6 +70,10 @@ param taskifyWebImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp' // P
 @secure()
 @description('PostgreSQL administrator password')
 param postgresqlAdminPassword string
+
+@secure()
+@description('Key that signs the Active User identity issued by the API: at least 32 random bytes, base64-encoded')
+param authSigningKey string
 
 @description('Enable VNet integration (recommended for production)')
 param enableVNetIntegration bool = false
@@ -116,6 +125,16 @@ module postgresql './resources/postgresql.bicep' = {
   }
 }
 
+module redis './resources/redis.bicep' = {
+  name: 'redis'
+  params: {
+    environmentName: environmentName
+    location: location
+    uniqueId: uniqueId
+    highAvailability: environmentName == 'prod'
+  }
+}
+
 module containerApps './resources/container-apps.bicep' = {
   name: 'containerApps'
   params: {
@@ -130,8 +149,11 @@ module containerApps './resources/container-apps.bicep' = {
     cpu: containerAppCpu
     memory: containerAppMemory
     minReplicas: containerAppMinReplicas
+    webMinReplicas: webMinReplicas
     maxReplicas: containerAppMaxReplicas
     postgresqlConnectionString: postgresql.outputs.postgresqlConnectionString
+    authSigningKey: authSigningKey
+    redisConnectionString: redis.outputs.connectionString
     containerRegistryLoginServer: containerRegistry.outputs.containerRegistryLoginServer
     containerRegistryUsername: containerRegistry.outputs.containerRegistryUsername
     containerRegistryPassword: containerRegistry.outputs.containerRegistryPassword
@@ -160,7 +182,7 @@ module keyVault './resources/keyvault.bicep' = {
 @description('Container Apps Environment ID')
 output containerAppsEnvironmentId string = containerApps.outputs.containerAppsEnvironmentId
 
-@description('Taskify API endpoint')
+@description('Taskify API endpoint (internal to the Container Apps environment)')
 output taskifyApiUrl string = containerApps.outputs.taskifyApiUrl
 
 @description('Taskify Web endpoint')

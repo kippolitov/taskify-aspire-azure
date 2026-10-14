@@ -11,10 +11,8 @@ namespace Taskify.Web.Tests.Components;
 /// <summary>T025c — KanbanBoard drag-and-drop callback tests.</summary>
 public class KanbanBoardDragTests : BunitContext
 {
-    private sealed class DelayedDragApiHandler(
-        Dictionary<string, string> responses,
-        int delayMs
-    ) : HttpMessageHandler
+    private sealed class DelayedDragApiHandler(Dictionary<string, string> responses, int delayMs)
+        : HttpMessageHandler
     {
         private readonly Dictionary<string, string> _responses = responses;
         private readonly int _delayMs = delayMs;
@@ -71,13 +69,13 @@ public class KanbanBoardDragTests : BunitContext
         );
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -103,13 +101,13 @@ public class KanbanBoardDragTests : BunitContext
         );
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -127,8 +125,22 @@ public class KanbanBoardDragTests : BunitContext
         Assert.Contains("Set up CI pipeline", inProgressColumn.TextContent);
 
         var headers = cut.FindAll(".kanban-column__header");
-        Assert.Contains("ToDo0", System.Text.RegularExpressions.Regex.Replace(headers[0].TextContent, @"\s+", string.Empty));
-        Assert.Contains("InProgress2", System.Text.RegularExpressions.Regex.Replace(headers[1].TextContent, @"\s+", string.Empty));
+        Assert.Contains(
+            "ToDo0",
+            System.Text.RegularExpressions.Regex.Replace(
+                headers[0].TextContent,
+                @"\s+",
+                string.Empty
+            )
+        );
+        Assert.Contains(
+            "InProgress2",
+            System.Text.RegularExpressions.Regex.Replace(
+                headers[1].TextContent,
+                @"\s+",
+                string.Empty
+            )
+        );
 
         await dropTask;
     }

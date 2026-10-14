@@ -47,9 +47,22 @@ param minReplicas int = 0
 @description('Maximum replicas for Container Apps')
 param maxReplicas int = 10
 
+@minValue(0)
+@maxValue(30)
+@description('Minimum replicas for the web app')
+param webMinReplicas int = 0
+
 @secure()
 @description('PostgreSQL connection string')
 param postgresqlConnectionString string
+
+@secure()
+@description('Redis connection string for the SignalR backplane')
+param redisConnectionString string
+
+@secure()
+@description('Key that signs the Active User identity issued by the API')
+param authSigningKey string
 
 @description('Azure Container Registry login server')
 param containerRegistryLoginServer string
@@ -61,6 +74,40 @@ param containerRegistryUsername string
 @secure()
 @description('Azure Container Registry admin password')
 param containerRegistryPassword string
+
+// === VARIABLES ===
+
+// Liveness never depends on the database (/alive); readiness does (/health). The startup
+// probe gives each replica 2 minutes to start.
+var probes = [
+  {
+    type: 'Startup'
+    httpGet: {
+      path: '/alive'
+      port: 8080
+    }
+    periodSeconds: 5
+    failureThreshold: 24
+  }
+  {
+    type: 'Liveness'
+    httpGet: {
+      path: '/alive'
+      port: 8080
+    }
+    periodSeconds: 10
+    failureThreshold: 3
+  }
+  {
+    type: 'Readiness'
+    httpGet: {
+      path: '/health'
+      port: 8080
+    }
+    periodSeconds: 10
+    failureThreshold: 3
+  }
+]
 
 // === RESOURCES ===
 
@@ -91,8 +138,11 @@ resource taskifyApiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
+      activeRevisionsMode: 'Single'
+      // Internal: only apps in this environment, such as the web app, can reach the API.
+      // No environment-level HTTP route targets it (FR-038).
       ingress: {
-        external: true
+        external: false
         targetPort: 8080
         transport: 'auto'
         allowInsecure: false
@@ -114,6 +164,14 @@ resource taskifyApiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: postgresqlConnectionString
         }
         {
+          name: 'auth-signing-key'
+          value: authSigningKey
+        }
+        {
+          name: 'redis-connection-string'
+          value: redisConnectionString
+        }
+        {
           name: 'applicationinsights-connection-string'
           value: applicationInsightsConnectionString
         }
@@ -128,6 +186,7 @@ resource taskifyApiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
+          probes: probes
           env: [
             {
               name: 'ASPNETCORE_ENVIRONMENT'
@@ -140,6 +199,22 @@ resource taskifyApiContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'ConnectionStrings__taskifydb'
               secretRef: 'postgresql-connection-string'
+            }
+            {
+              name: 'Auth__SigningKey'
+              secretRef: 'auth-signing-key'
+            }
+            {
+              name: 'Auth__Issuer'
+              value: 'taskify'
+            }
+            {
+              name: 'Auth__Audience'
+              value: 'taskify-api'
+            }
+            {
+              name: 'ConnectionStrings__redis'
+              secretRef: 'redis-connection-string'
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -175,11 +250,17 @@ resource taskifyWebContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
+      // Session affinity only works in single revision mode.
+      activeRevisionsMode: 'Single'
       ingress: {
         external: true
         targetPort: 8080
         transport: 'auto'
         allowInsecure: false
+        // A Blazor Server circuit lives in one replica; keep each browser on it (FR-033).
+        stickySessions: {
+          affinity: 'sticky'
+        }
       }
       registries: [
         {
@@ -208,6 +289,7 @@ resource taskifyWebContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
+          probes: probes
           env: [
             {
               name: 'ASPNETCORE_ENVIRONMENT'
@@ -233,7 +315,7 @@ resource taskifyWebContainerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: minReplicas
+        minReplicas: webMinReplicas
         maxReplicas: maxReplicas
         rules: [
           {

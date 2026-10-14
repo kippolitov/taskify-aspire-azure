@@ -198,12 +198,7 @@
 
         try
         {
-            var updated = await Api.UpdateTaskAsync(
-                Task.Id,
-                _editTitle,
-                _editDescription,
-                Task.Assignee?.Id
-            );
+            var updated = await Api.UpdateTaskAsync(Task.Id, _editTitle, _editDescription);
             if (updated is not null)
                 await OnTaskUpdated.InvokeAsync(updated);
 
@@ -223,7 +218,7 @@
 
         try
         {
-            var updated = await Api.UpdateTaskAssigneeAsync(Task.Id, assigneeId);
+            var updated = await Api.AssignTaskAsync(Task.Id, assigneeId);
             if (updated is not null)
                 await OnTaskUpdated.InvokeAsync(updated);
         }
@@ -240,11 +235,7 @@
 
         try
         {
-            var comment = await Api.AddCommentAsync(
-                Task.Id,
-                Identity.CurrentUser!.Id,
-                _newCommentText
-            );
+            var comment = await Api.AddCommentAsync(Task.Id, _newCommentText);
             if (comment is not null)
             {
                 _comments.Add(comment);

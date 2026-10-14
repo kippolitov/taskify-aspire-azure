@@ -1,33 +1,43 @@
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.Http;
+using Microsoft.Extensions.ServiceDiscovery;
+using Taskify.Shared;
 using Taskify.Shared.Dtos;
-using Taskify.Shared.Enums;
+using Taskify.Shared.Realtime;
 
 namespace Taskify.Web.Services;
 
 /// <summary>
-/// Manages the SignalR connection to TaskifyHub on the API.
-/// Uses IHttpMessageHandlerFactory so service-discovery resolves the URL.
+/// Manages the SignalR connection to TaskifyHub on the API. It resolves the API's address
+/// through service discovery, then connects with WebSockets only and no negotiation, so any
+/// API instance can serve it without sticky sessions (research R15).
 /// </summary>
 public sealed class BoardHubClient : IAsyncDisposable
 {
+    // https+http:// is the Aspire service-discovery scheme — not a literal hardcoded URL
+#pragma warning disable S1075
+    private const string ApiServiceName = "https+http://taskify-api";
+#pragma warning restore S1075
+
     private HubConnection? _connection;
-    private readonly IHttpMessageHandlerFactory _handlerFactory;
+    private readonly ServiceEndpointResolver _resolver;
+    private readonly IdentityService _identity;
     private int? _currentProjectId;
 
-    public event Func<int, string, string, DateTimeOffset, Task>? OnTaskMoved;
-    public event Func<int, UserDto?, Task>? OnTaskAssigned;
+    public event Func<TaskMovedMessage, Task>? OnTaskMoved;
+    public event Func<TaskAssignedMessage, Task>? OnTaskAssigned;
     public event Func<TaskDto, Task>? OnTaskCreated;
-    public event Func<int, CommentDto, Task>? OnCommentAdded;
-    public event Func<int, int, string, DateTimeOffset?, Task>? OnCommentEdited;
-    public event Func<int, int, Task>? OnCommentDeleted;
+    public event Func<CommentAddedMessage, Task>? OnCommentAdded;
+    public event Func<CommentEditedMessage, Task>? OnCommentEdited;
+    public event Func<CommentDeletedMessage, Task>? OnCommentDeleted;
 
-    public BoardHubClient(IHttpMessageHandlerFactory handlerFactory)
+    public BoardHubClient(ServiceEndpointResolver resolver, IdentityService identity)
     {
-        _handlerFactory = handlerFactory;
+        _resolver = resolver;
+        _identity = identity;
     }
 
-    public async Task StartAsync(int projectId)
+    public async Task StartAsync(int projectId, CancellationToken ct = default)
     {
         if (_connection is not null)
         {
@@ -39,17 +49,21 @@ public sealed class BoardHubClient : IAsyncDisposable
             await StopAsync();
         }
 
+        var hubUrl = await ResolveHubUrlAsync(ct);
         _currentProjectId = projectId;
 
         _connection = new HubConnectionBuilder()
             .WithUrl(
-#pragma warning disable S1075 // https+http:// is the Aspire service-discovery scheme
-                "https+http://taskify-api/hubs/taskify",
-#pragma warning restore S1075
+                hubUrl,
                 o =>
-                    o.HttpMessageHandlerFactory = _ =>
-                        _handlerFactory.CreateHandler("taskify-api-hub")
+                {
+                    o.Transports = HttpTransportType.WebSockets;
+                    o.SkipNegotiation = true;
+                    // Called before every connect and reconnect, so an old token is renewed first.
+                    o.AccessTokenProvider = _identity.GetAccessTokenAsync;
+                }
             )
+            .AddJsonProtocol(o => TaskifyJson.Configure(o.PayloadSerializerOptions))
             .WithAutomaticReconnect()
             .Build();
 
@@ -63,8 +77,24 @@ public sealed class BoardHubClient : IAsyncDisposable
             }
         };
 
-        await _connection.StartAsync();
-        await _connection.SendAsync("JoinBoard", projectId);
+        await _connection.StartAsync(ct);
+        await _connection.SendAsync("JoinBoard", projectId, ct);
+    }
+
+    /// <summary>
+    /// WebSockets bypass HttpClient, so the <c>https+http://</c> name must be resolved to a
+    /// real address first.
+    /// </summary>
+    private async Task<Uri> ResolveHubUrlAsync(CancellationToken ct)
+    {
+        var source = await _resolver.GetEndpointsAsync(ApiServiceName, ct);
+        var endpoint =
+            source.Endpoints.Select(e => e.EndPoint).OfType<UriEndPoint>().FirstOrDefault()
+            ?? throw new InvalidOperationException(
+                "Service discovery returned no address for taskify-api."
+            );
+
+        return new Uri(endpoint.Uri, "hubs/taskify");
     }
 
     public async Task StopAsync()
@@ -94,60 +124,41 @@ public sealed class BoardHubClient : IAsyncDisposable
 
     private void RegisterHandlers(HubConnection conn)
     {
-        conn.On<TaskMovedPayload>(
-            "TaskMoved",
-            p =>
-                OnTaskMoved?.Invoke(p.TaskId, p.FromStatus, p.ToStatus, p.MovedAt)
-                ?? Task.CompletedTask
+        RegisterTaskHandlers(conn);
+        RegisterCommentHandlers(conn);
+    }
+
+    private void RegisterTaskHandlers(HubConnection conn)
+    {
+        conn.On<TaskMovedMessage>(
+            nameof(ITaskifyClient.TaskMoved),
+            m => OnTaskMoved?.Invoke(m) ?? Task.CompletedTask
         );
-
-        conn.On<TaskAssignedPayload>(
-            "TaskAssigned",
-            p => OnTaskAssigned?.Invoke(p.TaskId, p.Assignee) ?? Task.CompletedTask
+        conn.On<TaskAssignedMessage>(
+            nameof(ITaskifyClient.TaskAssigned),
+            m => OnTaskAssigned?.Invoke(m) ?? Task.CompletedTask
         );
-
-        conn.On<TaskDto>("TaskCreated", t => OnTaskCreated?.Invoke(t) ?? Task.CompletedTask);
-
-        conn.On<CommentAddedPayload>(
-            "CommentAdded",
-            p => OnCommentAdded?.Invoke(p.TaskId, p.Comment) ?? Task.CompletedTask
+        conn.On<TaskDto>(
+            nameof(ITaskifyClient.TaskCreated),
+            t => OnTaskCreated?.Invoke(t) ?? Task.CompletedTask
         );
+    }
 
-        conn.On<CommentEditedPayload>(
-            "CommentEdited",
-            p =>
-                OnCommentEdited?.Invoke(p.TaskId, p.CommentId, p.NewText, p.EditedAt)
-                ?? Task.CompletedTask
+    private void RegisterCommentHandlers(HubConnection conn)
+    {
+        conn.On<CommentAddedMessage>(
+            nameof(ITaskifyClient.CommentAdded),
+            m => OnCommentAdded?.Invoke(m) ?? Task.CompletedTask
         );
-
-        conn.On<CommentDeletedPayload>(
-            "CommentDeleted",
-            p => OnCommentDeleted?.Invoke(p.TaskId, p.CommentId) ?? Task.CompletedTask
+        conn.On<CommentEditedMessage>(
+            nameof(ITaskifyClient.CommentEdited),
+            m => OnCommentEdited?.Invoke(m) ?? Task.CompletedTask
+        );
+        conn.On<CommentDeletedMessage>(
+            nameof(ITaskifyClient.CommentDeleted),
+            m => OnCommentDeleted?.Invoke(m) ?? Task.CompletedTask
         );
     }
 
     public async ValueTask DisposeAsync() => await StopAsync();
-
-    // ── Payload records ──────────────────────────────────────────────────
-
-    private sealed record TaskMovedPayload(
-        int TaskId,
-        int ProjectId,
-        string FromStatus,
-        string ToStatus,
-        DateTimeOffset MovedAt
-    );
-
-    private sealed record TaskAssignedPayload(int TaskId, int ProjectId, UserDto? Assignee);
-
-    private sealed record CommentAddedPayload(int TaskId, CommentDto Comment);
-
-    private sealed record CommentEditedPayload(
-        int TaskId,
-        int CommentId,
-        string NewText,
-        DateTimeOffset? EditedAt
-    );
-
-    private sealed record CommentDeletedPayload(int TaskId, int CommentId);
 }

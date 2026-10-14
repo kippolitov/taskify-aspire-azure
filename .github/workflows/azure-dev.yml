@@ -72,6 +72,7 @@ jobs:
           # Set required Bicep parameters
           azd env config set infra.parameters.environmentName "$ENV_NAME"
           azd env config set infra.parameters.postgresqlAdminPassword "${{ secrets.POSTGRESQL_ADMIN_PASSWORD }}"
+          azd env config set infra.parameters.authSigningKey "${{ secrets.AUTH_SIGNING_KEY }}"
           
           # Copy environment-specific parameter file if it exists
           # azd automatically uses infra/main.parameters.json

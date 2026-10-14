@@ -1,5 +1,7 @@
 # REST API Contract: Create Taskify
 
+Superseded by `specs/004-production-hardening/contracts/`.
+
 **Version**: 1.0.0  
 **Date**: March 5, 2026  
 **Base URL**: `http://localhost:{port}/api` (port assigned by Aspire; see Aspire dashboard)  

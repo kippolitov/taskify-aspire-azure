@@ -88,6 +88,8 @@ Two findings change the design described in [docs/hardening-modernization-plan.m
 - The docs state that the source generator "creates metadata only for the assembly where `AddValidation` is called". Without the registration in `Taskify.Shared`, validation would silently not run for shared types; missing metadata produces no exception.
 - `AddValidation` and the validation filter are stable. Only the underlying resolver APIs are experimental, and the plan does not use them.
 
+**Verified in implementation (2026-10-14)**: with SDK 10.0.301 and `Microsoft.Extensions.Validation` 10.0.9, the API's own `AddValidation()` already validates the `Taskify.Shared` records, because they appear as Minimal API endpoint parameters; removing `AddTaskifyContractValidation()` left every validation test passing. The registration is kept as a guard for shared types validated outside an endpoint signature.
+
 **Alternatives considered**: Keep controllers and return `ActionResult<T>` with `[ProducesResponseType]` (D1, rejected). Validation, error formatting and OpenAPI shapes would stay hand-maintained per action.
 
 **Sources**: [Validation in ASP.NET Core](https://learn.microsoft.com/aspnet/core/fundamentals/validation?view=aspnetcore-10.0), [Minimal APIs quick reference – validation](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis?view=aspnetcore-10.0#validation-support-in-minimal-apis), [What's new in ASP.NET Core 10 – Minimal APIs](https://learn.microsoft.com/aspnet/core/release-notes/aspnetcore-10.0?view=aspnetcore-10.0#minimal-apis).

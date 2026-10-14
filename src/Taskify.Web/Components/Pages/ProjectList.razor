@@ -35,7 +35,7 @@ else
         else
         {
             <div class="project-grid" role="list">
-                @foreach (var project in _projects)
+                @foreach (var project in Projects ?? [])
                 {
                     <a class="project-card"
                        href="/board/@project.Id"
@@ -54,7 +54,8 @@ else
 }
 
 @code {
-    private List<ProjectDto> _projects = [];
+    [PersistentState] public List<ProjectDto>? Projects { get; set; }
+
     private bool _loading = true;
     private string? _error;
 
@@ -65,7 +66,7 @@ else
 
         try
         {
-            _projects = await Api.GetProjectsAsync() ?? [];
+            Projects ??= await Api.GetProjectsAsync() ?? [];
         }
         catch (Exception ex)
         {

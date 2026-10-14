@@ -20,6 +20,9 @@
     "containerAppMaxReplicas": {
       "value": 5
     },
+    "webMinReplicas": {
+      "value": 0
+    },
     "postgresqlSkuName": {
       "value": "Standard_B1ms"
     },

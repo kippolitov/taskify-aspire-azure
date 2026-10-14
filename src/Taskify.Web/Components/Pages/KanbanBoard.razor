@@ -51,7 +51,7 @@ else
                         aria-label="@column.Label tasks">
                         @foreach (var task in TasksForColumn(column.Status))
                         {
-                            <TaskCard Task="task" OnClick="() => OpenTaskDetail(task)" />
+                            <TaskCard @key="task.Id" Task="task" OnClick="() => OpenTaskDetail(task)" />
                         }
                     </div>
                 </div>
@@ -227,28 +227,20 @@ else
 
     // ── SignalR handlers (must InvokeAsync StateHasChanged) ──────────────
 
-    private async Task HandleTaskMovedSignalR(
-        int taskId,
-        string fromStatus,
-        string toStatus,
-        DateTimeOffset movedAt
-    )
+    private async Task HandleTaskMovedSignalR(TaskMovedMessage message)
     {
-        if (!Enum.TryParse<ColumnStatus>(toStatus, out var status))
-            return;
-
-        var idx = _tasks.FindIndex(t => t.Id == taskId);
+        var idx = _tasks.FindIndex(t => t.Id == message.TaskId);
         if (idx >= 0)
-            _tasks[idx] = _tasks[idx] with { Status = status, UpdatedAt = movedAt };
+            _tasks[idx] = _tasks[idx] with { Status = message.ToStatus, UpdatedAt = message.MovedAt };
 
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task HandleTaskAssignedSignalR(int taskId, UserDto? assignee)
+    private async Task HandleTaskAssignedSignalR(TaskAssignedMessage message)
     {
-        var idx = _tasks.FindIndex(t => t.Id == taskId);
+        var idx = _tasks.FindIndex(t => t.Id == message.TaskId);
         if (idx >= 0)
-            _tasks[idx] = _tasks[idx] with { Assignee = assignee, UpdatedAt = DateTimeOffset.UtcNow };
+            _tasks[idx] = _tasks[idx] with { Assignee = message.Assignee, UpdatedAt = DateTimeOffset.UtcNow };
 
         await InvokeAsync(StateHasChanged);
     }

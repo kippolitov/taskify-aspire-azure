@@ -13,10 +13,8 @@ namespace Taskify.Web.Tests.Components;
 /// </summary>
 public class SortableInteropJsTests : BunitContext
 {
-    private sealed class DelayedTestApiHandler(
-        Dictionary<string, string> responses,
-        int delayMs
-    ) : HttpMessageHandler
+    private sealed class DelayedTestApiHandler(Dictionary<string, string> responses, int delayMs)
+        : HttpMessageHandler
     {
         private readonly Dictionary<string, string> _responses = responses;
         private readonly int _delayMs = delayMs;
@@ -60,13 +58,13 @@ public class SortableInteropJsTests : BunitContext
         );
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         // Loose mode allows any JS invocation — we verify counts afterwards
@@ -122,13 +120,13 @@ public class SortableInteropJsTests : BunitContext
         );
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -140,13 +138,12 @@ public class SortableInteropJsTests : BunitContext
             () =>
                 Assert.Equal(
                     4,
-                    JSInterop
-                        .Invocations.Count(i =>
-                            i.Identifier.Contains(
-                                "sortableInterop.init",
-                                StringComparison.OrdinalIgnoreCase
-                            )
+                    JSInterop.Invocations.Count(i =>
+                        i.Identifier.Contains(
+                            "sortableInterop.init",
+                            StringComparison.OrdinalIgnoreCase
                         )
+                    )
                 ),
             TimeSpan.FromSeconds(3)
         );
@@ -159,10 +156,11 @@ public class SortableInteropJsTests : BunitContext
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
 
         // No user set
-        Services.AddSingleton(new IdentityService());
-        Services.AddSingleton(new ApiClient(httpClient));
+        var identity = TestIdentity.Create();
+        Services.AddSingleton(identity);
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;

@@ -10,6 +10,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 // Identity service (scoped per circuit / user session)
 builder.Services.AddScoped<IdentityService>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Typed HTTP client (service-discovery-aware)
 // https+http:// is the Aspire service-discovery scheme — not a literal hardcoded URL
@@ -21,9 +22,12 @@ builder
     .Services.AddHttpClient<ApiClient>(c => c.BaseAddress = new Uri(ApiServiceName))
     .AddServiceDiscovery();
 
-// Named HTTP client used by BoardHubClient via IHttpMessageHandlerFactory
+// Named HTTP client that IdentityService uses to obtain and renew the identity
 builder
-    .Services.AddHttpClient("taskify-api-hub", c => c.BaseAddress = new Uri(ApiServiceName))
+    .Services.AddHttpClient(
+        IdentityService.ClientName,
+        c => c.BaseAddress = new Uri(ApiServiceName)
+    )
     .AddServiceDiscovery();
 
 // SignalR board hub client (scoped per circuit)

@@ -21,13 +21,13 @@ public class ProjectListTests : BunitContext
         );
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
 
-        var identity = new IdentityService();
+        var identity = TestIdentity.Create();
         if (activeUser is not null)
         {
-            identity.SetUser(activeUser);
+            TestIdentity.SignIn(identity, activeUser);
         }
 
-        Services.AddScoped(_ => new ApiClient(httpClient));
+        Services.AddScoped(_ => new ApiClient(httpClient, identity));
         Services.AddScoped(_ => identity);
     }
 
