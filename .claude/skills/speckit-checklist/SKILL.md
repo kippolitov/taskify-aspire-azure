@@ -1,6 +1,15 @@
 ---
-description: Generate a custom checklist for the current feature based on user requirements.
+name: "speckit-checklist"
+description: "Generate a custom checklist for the current feature based on user requirements."
+argument-hint: "Domain or focus area for the checklist"
+compatibility: "Requires spec-kit project structure with .specify/ directory"
+metadata:
+  author: "github-spec-kit"
+  source: "templates/commands/checklist.md"
+user-invocable: true
+disable-model-invocation: false
 ---
+
 
 ## Checklist Purpose: "Unit Tests for English"
 
@@ -30,7 +39,7 @@ description: Generate a custom checklist for the current feature based on user r
 - `[x]` does NOT mean implementation work is complete.
 - This command generates or appends checklist items; it MUST NOT mark generated items `[x]`.
 - An agent may assist with evaluating items only when explicitly asked by the reviewer.
-- `checklists/requirements.md` is a separate built-in spec-quality checklist maintained by `/speckit.specify` and `/speckit.clarify`; do not treat that exception as applying to custom checklists generated here.
+- `checklists/requirements.md` is a separate built-in spec-quality checklist maintained by `/speckit-specify` and `/speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
 
 ## User Input
 
@@ -50,6 +59,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 - For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
   - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
   - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
+- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
   - **Optional hook** (`optional: true`):
     ```
@@ -251,7 +261,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - ✅ "Are [edge cases/scenarios] addressed in requirements?"
    - ✅ "Does the spec define [missing aspect]?"
 
-7. **Structure Reference**: Generate the checklist following the canonical template in `.specify/templates/checklist-template.md` for title, meta section, category headings, ownership note, notes section, and ID formatting. If template is unavailable, use: H1 title, purpose/created meta lines, an ownership note explaining that `[x]` means reviewer approval of requirements quality, `##` category sections containing `- [ ] CHK### <requirement item>` lines with globally incrementing IDs starting at CHK001, and notes that `/speckit.implement` reads checklist state but does not modify markers.
+7. **Structure Reference**: Generate the checklist following the canonical template in `.specify/templates/checklist-template.md` for title, meta section, category headings, ownership note, notes section, and ID formatting. If template is unavailable, use: H1 title, purpose/created meta lines, an ownership note explaining that `[x]` means reviewer approval of requirements quality, `##` category sections containing `- [ ] CHK### <requirement item>` lines with globally incrementing IDs starting at CHK001, and notes that `/speckit-implement` reads checklist state but does not modify markers.
 
 8. **Report**: Output full path to checklist file, item count, and summarize whether the run created a new file or appended to an existing one. Summarize:
    - Focus areas selected
@@ -259,7 +269,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Actor/timing
    - Any explicit user-specified must-have items incorporated
 
-**Important**: Each `/speckit.checklist` command invocation uses a short, descriptive checklist filename and either creates a new file or appends to an existing one. This allows:
+**Important**: Each `/speckit-checklist` command invocation uses a short, descriptive checklist filename and either creates a new file or appends to an existing one. This allows:
 
 - Multiple checklists of different types (e.g., `ux.md`, `test.md`, `security.md`)
 - Simple, memorable filenames that indicate checklist purpose
@@ -351,6 +361,7 @@ Check if `.specify/extensions.yml` exists in the project root.
 - For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
   - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
   - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
+- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
   - **Optional hook** (`optional: true`):
     ```
