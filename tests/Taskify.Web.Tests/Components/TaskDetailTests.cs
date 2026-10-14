@@ -26,6 +26,8 @@ public class TaskDetailTests : BunitContext
             CommentCount: 0
         );
 
+    private TestApiHandler _handler = null!;
+
     private IRenderedComponent<TaskDetail> Render(
         TaskDto? task = null,
         List<UserDto>? users = null,
@@ -34,26 +36,27 @@ public class TaskDetailTests : BunitContext
     {
         var resolvedTask = task ?? SampleTask();
         var commentsJson = TestApiHandler.Serialize(new List<CommentDto>());
-        var handler = new TestApiHandler(
+        var handler = _handler = new TestApiHandler(
             new Dictionary<string, string>
             {
                 [$"/api/tasks/{resolvedTask.Id}/comments"] = commentsJson,
+                [$"/api/tasks/{resolvedTask.Id}"] = TestApiHandler.Serialize(resolvedTask),
             }
         );
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
 
-        var identity = new IdentityService();
+        var identity = TestIdentity.Create();
         if (currentUserId.HasValue)
         {
             var user = TestData.FiveUsers.Find(u => u.Id == currentUserId.Value);
             if (user is not null)
             {
-                identity.SetUser(user);
+                TestIdentity.SignIn(identity, user);
             }
         }
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
 
         return Render<TaskDetail>(p =>
             p.Add(b => b.Task, resolvedTask)
@@ -106,10 +109,46 @@ public class TaskDetailTests : BunitContext
     }
 
     [Fact]
+    public void SaveEdit_SendsPut_WithOnlyTitleAndDescription()
+    {
+        var cut = Render(task: SampleTask(assigneeId: 2));
+        cut.WaitForState(() => !cut.Markup.Contains("spinner-border"), TimeSpan.FromSeconds(3));
+
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "Edit").Click();
+        cut.Find("input[aria-label='Task title']").Change("Renamed");
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "Save").Click();
+
+        var put = Assert.Single(_handler.Requests, r => r.Method == HttpMethod.Put);
+        Assert.Equal("/api/tasks/1", put.Path);
+        using var body = System.Text.Json.JsonDocument.Parse(put.Body!);
+        Assert.Equal(
+            ["description", "title"],
+            body.RootElement.EnumerateObject().Select(p => p.Name).Order()
+        );
+        Assert.Equal("Renamed", body.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void AssigneeChange_SendsPatchToAssignee()
+    {
+        var cut = Render();
+        cut.WaitForState(() => !cut.Markup.Contains("spinner-border"), TimeSpan.FromSeconds(3));
+
+        cut.Find("select[aria-label='Assign task']").Change("3");
+
+        var patch = Assert.Single(_handler.Requests, r => r.Method == HttpMethod.Patch);
+        Assert.Equal("/api/tasks/1/assignee", patch.Path);
+        using var body = System.Text.Json.JsonDocument.Parse(patch.Body!);
+        Assert.Equal(3, body.RootElement.GetProperty("assigneeId").GetInt32());
+        Assert.DoesNotContain(_handler.Requests, r => r.Method == HttpMethod.Put);
+    }
+
+    [Fact]
     public void TaskDetail_ClosesOnBackdropClick()
     {
         var closeCalled = false;
-        Services.AddSingleton(new IdentityService());
+        var identity = TestIdentity.Create();
+        Services.AddSingleton(identity);
         var handler = new TestApiHandler(
             new Dictionary<string, string>
             {
@@ -117,7 +156,10 @@ public class TaskDetailTests : BunitContext
             }
         );
         Services.AddSingleton(
-            new ApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") })
+            new ApiClient(
+                new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") },
+                identity
+            )
         );
 
         var cut = Render<TaskDetail>(p =>

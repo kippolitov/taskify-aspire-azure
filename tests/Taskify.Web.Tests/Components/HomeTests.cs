@@ -20,8 +20,11 @@ public class HomeTests : BunitContext
         );
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
 
-        Services.AddScoped(_ => new ApiClient(httpClient));
-        Services.AddScoped<IdentityService>();
+        Services.AddScoped(sp => new ApiClient(
+            httpClient,
+            sp.GetRequiredService<IdentityService>()
+        ));
+        Services.AddScoped(_ => TestIdentity.Create());
     }
 
     [Fact]
@@ -63,7 +66,7 @@ public class HomeTests : BunitContext
     public void Home_ClickingUserCard_SetsIdentityCurrentUser()
     {
         RegisterServices();
-        var identity = new IdentityService();
+        var identity = TestIdentity.Create();
         Services.AddScoped(_ => identity);
 
         var cut = Render<Home>();

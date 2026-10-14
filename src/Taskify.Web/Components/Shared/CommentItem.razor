@@ -71,7 +71,7 @@
 
         try
         {
-            var updated = await Api.EditCommentAsync(Comment.Id, CurrentUserId!.Value, _editText);
+            var updated = await Api.EditCommentAsync(Comment.Id, _editText);
             if (updated is not null)
             {
                 _editing = false;
@@ -88,7 +88,7 @@
     {
         try
         {
-            await Api.DeleteCommentAsync(Comment.Id, CurrentUserId!.Value);
+            await Api.DeleteCommentAsync(Comment.Id);
             await OnDeleted.InvokeAsync(Comment.Id);
         }
         catch

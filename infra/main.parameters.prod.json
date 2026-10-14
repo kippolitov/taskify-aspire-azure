@@ -20,6 +20,9 @@
     "containerAppMaxReplicas": {
       "value": 30
     },
+    "webMinReplicas": {
+      "value": 1
+    },
     "postgresqlSkuName": {
       "value": "Standard_D2s_v3"
     },

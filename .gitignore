@@ -65,6 +65,8 @@ __azurite_db*__.json
 # Test results & coverage
 TestResults/
 coverage/
+coverage-critical/
+test-results/
 coverage.cobertura.xml
 *.trx
 *.coverage

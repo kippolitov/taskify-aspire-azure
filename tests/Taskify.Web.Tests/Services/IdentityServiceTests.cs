@@ -1,6 +1,6 @@
 using Taskify.Shared.Dtos;
 using Taskify.Shared.Enums;
-using Taskify.Web.Services;
+using Taskify.Web.Tests.Helpers;
 
 namespace Taskify.Web.Tests.Services;
 
@@ -9,21 +9,21 @@ public class IdentityServiceTests
     [Fact]
     public void InitialState_IsNotAuthenticated()
     {
-        var svc = new IdentityService();
+        var svc = TestIdentity.Create();
 
         Assert.False(svc.IsAuthenticated);
         Assert.Null(svc.CurrentUser);
     }
 
     [Fact]
-    public void SetUser_SetsCurrentUserAndRaisesOnChange()
+    public async Task SignIn_SetsCurrentUserAndRaisesOnChange()
     {
-        var svc = new IdentityService();
+        var svc = TestIdentity.Create();
         var user = new UserDto(1, "Alice", UserRole.Engineer);
         var changeCount = 0;
         svc.OnChange += () => changeCount++;
 
-        svc.SetUser(user);
+        await svc.SignInAsync(user);
 
         Assert.True(svc.IsAuthenticated);
         Assert.Equal(user, svc.CurrentUser);
@@ -31,10 +31,10 @@ public class IdentityServiceTests
     }
 
     [Fact]
-    public void ClearUser_RemovesCurrentUserAndRaisesOnChange()
+    public async Task ClearUser_RemovesCurrentUserAndRaisesOnChange()
     {
-        var svc = new IdentityService();
-        svc.SetUser(new UserDto(2, "Bob", UserRole.ProductManager));
+        var svc = TestIdentity.Create();
+        await svc.SignInAsync(new UserDto(2, "Bob", UserRole.ProductManager));
         var changeCount = 0;
         svc.OnChange += () => changeCount++;
 
@@ -46,13 +46,13 @@ public class IdentityServiceTests
     }
 
     [Fact]
-    public void SetUser_OverwritesPreviousUser()
+    public async Task SignIn_OverwritesPreviousUser()
     {
-        var svc = new IdentityService();
-        svc.SetUser(new UserDto(1, "Alice", UserRole.Engineer));
+        var svc = TestIdentity.Create();
+        await svc.SignInAsync(new UserDto(1, "Alice", UserRole.Engineer));
         var bob = new UserDto(2, "Bob", UserRole.ProductManager);
 
-        svc.SetUser(bob);
+        await svc.SignInAsync(bob);
 
         Assert.Equal(bob, svc.CurrentUser);
         Assert.Equal("Bob", svc.CurrentUser!.DisplayName);

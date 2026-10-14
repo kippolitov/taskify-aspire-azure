@@ -22,7 +22,7 @@
     else
     {
         <div class="user-grid" role="list">
-            @foreach (var user in _users)
+            @foreach (var user in Users ?? [])
             {
                 <button
                     class="user-card"
@@ -38,7 +38,8 @@
 </div>
 
 @code {
-    private List<UserDto> _users = [];
+    [PersistentState] public List<UserDto>? Users { get; set; }
+
     private bool _loading = true;
     private string? _error;
 
@@ -46,7 +47,7 @@
     {
         try
         {
-            _users = await Api.GetUsersAsync() ?? [];
+            Users ??= await Api.GetUsersAsync() ?? [];
         }
         catch (Exception ex)
         {
@@ -58,9 +59,16 @@
         }
     }
 
-    private void SelectUser(UserDto user)
+    private async Task SelectUser(UserDto user)
     {
-        Identity.SetUser(user);
-        Nav.NavigateTo("/projects");
+        try
+        {
+            await Identity.SignInAsync(user);
+            Nav.NavigateTo("/projects");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to sign in: {ex.Message}";
+        }
     }
 }

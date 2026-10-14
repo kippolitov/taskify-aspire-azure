@@ -1,72 +1,72 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.Extensions.Http;
+using Taskify.Shared;
 using Taskify.Shared.Dtos;
 using Taskify.Shared.Enums;
 
 namespace Taskify.Web.Tests.Helpers;
 
+/// <summary>A request the handler received.</summary>
+public sealed record RecordedRequest(
+    HttpMethod Method,
+    string Path,
+    string? Body,
+    string? Authorization
+);
+
 /// <summary>
 /// A simple delegating handler that returns pre-configured JSON responses by URL path.
 /// Use in bUnit tests to avoid real HTTP calls from ApiClient.
+/// It records every request, so tests can assert what was sent.
 /// </summary>
 public sealed class TestApiHandler : HttpMessageHandler
 {
     private readonly Dictionary<string, string> _responses;
 
-    public static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() },
-    };
+    public List<RecordedRequest> Requests { get; } = [];
+
+    public static JsonSerializerOptions JsonOpts => TaskifyJson.Options;
 
     public TestApiHandler(Dictionary<string, string> responses)
     {
         _responses = responses;
     }
 
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken
     )
     {
         var path = request.RequestUri?.AbsolutePath ?? "";
+        var body = request.Content is null
+            ? null
+            : await request.Content.ReadAsStringAsync(cancellationToken);
+        Requests.Add(
+            new RecordedRequest(
+                request.Method,
+                path,
+                body,
+                request.Headers.Authorization?.ToString()
+            )
+        );
 
         foreach (var (pattern, json) in _responses)
         {
             if (path.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
-                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, Encoding.UTF8, "application/json"),
                 };
-                return Task.FromResult(response);
             }
         }
 
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
     }
 
     /// <summary>Builds a json string from an object using the standard Taskify serializer options.</summary>
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, JsonOpts);
-}
-
-/// <summary>
-/// A no-op IHttpMessageHandlerFactory for use when registering BoardHubClient in bUnit tests.
-/// Returns a handler that immediately returns 503 Service Unavailable so Hub.StartAsync fails fast.
-/// </summary>
-public sealed class NullHttpMessageHandlerFactory : IHttpMessageHandlerFactory
-{
-    public HttpMessageHandler CreateHandler(string name) => new NullHttpHandler();
-
-    private sealed class NullHttpHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken
-        ) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable));
-    }
 }
 
 /// <summary>

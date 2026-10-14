@@ -1,3 +1,4 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,8 @@ public static class ServiceDefaultsExtensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            http.AddStandardResilienceHandler();
+            // Reads are retried; changes never are, so a timeout cannot apply one twice.
+            http.AddStandardResilienceHandler(o => o.Retry.DisableForUnsafeHttpMethods());
             http.AddServiceDiscovery();
         });
 
@@ -43,6 +45,7 @@ public static class ServiceDefaultsExtensions
             .Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
                 metrics
+                    .AddMeter("Taskify.Api")
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddPrometheusExporter()
@@ -65,6 +68,12 @@ public static class ServiceDefaultsExtensions
         if (useOtlpExporter)
         {
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
+
+        // In Azure, traces, metrics and logs go to Application Insights.
+        if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+        {
+            builder.Services.AddOpenTelemetry().UseAzureMonitor();
         }
     }
 

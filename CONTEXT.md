@@ -21,7 +21,7 @@ A predefined team member with a display name and a Role. Exactly five exist in t
 _Avoid_: team member, member, person
 
 **Active User**:
-The User who has selected themselves at the landing screen for the current browser session. Determines which task cards are highlighted and whose name appears on new comments. A client-side concept — the server has no session state.
+The User a browser session acts as, chosen at the landing screen and vouched for by the server through a short-lived identity. The server takes the caller from that identity, never from the request. Determines which task cards are highlighted and whose name appears on new comments.
 _Avoid_: active identity, current user, logged-in user, authenticated user
 
 **Role**:

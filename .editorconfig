@@ -42,6 +42,12 @@ csharp_style_prefer_null_check_over_type_check = true:suggestion
 dotnet_style_null_propagation = true:suggestion
 dotnet_style_coalesce_expression = true:suggestion
 
+# Cyclomatic complexity ≤ 10 per method (constitution Principle I)
+dotnet_diagnostic.S1541.severity = warning
+
+# Forward an available CancellationToken
+dotnet_diagnostic.CA2016.severity = warning
+
 [*.{json,yml,yaml}]
 indent_size = 2
 

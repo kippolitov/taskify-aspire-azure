@@ -32,7 +32,7 @@ public class CommentItemTests : BunitContext
     {
         var handler = new TestApiHandler(new Dictionary<string, string>());
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
-        Services.AddScoped(_ => new ApiClient(httpClient));
+        Services.AddScoped(_ => new ApiClient(httpClient, TestIdentity.Create()));
     }
 
     [Fact]

@@ -37,10 +37,10 @@ public class TaskCardTests : BunitContext
 
     private void RegisterIdentity(UserDto? activeUser = null)
     {
-        var identity = new IdentityService();
+        var identity = TestIdentity.Create();
         if (activeUser is not null)
         {
-            identity.SetUser(activeUser);
+            TestIdentity.SignIn(identity, activeUser);
         }
 
         Services.AddScoped(_ => identity);

@@ -23,13 +23,13 @@ public class KanbanBoardTests : BunitContext
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
 
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -54,13 +54,13 @@ public class KanbanBoardTests : BunitContext
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
 
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -88,13 +88,13 @@ public class KanbanBoardTests : BunitContext
 
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
 
-        var identity = new IdentityService();
-        identity.SetUser(TestData.FiveUsers[0]);
+        var identity = TestIdentity.Create();
+        TestIdentity.SignIn(identity, TestData.FiveUsers[0]);
 
         Services.AddSingleton(identity);
-        Services.AddSingleton(new ApiClient(httpClient));
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -116,10 +116,11 @@ public class KanbanBoardTests : BunitContext
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost/") };
 
         // No current user set
-        Services.AddSingleton(new IdentityService());
-        Services.AddSingleton(new ApiClient(httpClient));
+        var identity = TestIdentity.Create();
+        Services.AddSingleton(identity);
+        Services.AddSingleton(new ApiClient(httpClient, identity));
         Services.AddSingleton<BoardHubClient>(
-            new BoardHubClient(new NullHttpMessageHandlerFactory())
+            new BoardHubClient(TestServiceDiscovery.CreateResolver(), identity)
         );
 
         JSInterop.Mode = JSRuntimeMode.Loose;

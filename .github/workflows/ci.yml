@@ -55,20 +55,25 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Run API unit tests
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Run API tests (PostgreSQL 16 via Testcontainers)
         run: |
           dotnet test tests/Taskify.Api.Tests \
             --configuration Release \
             --logger trx \
             --collect:"XPlat Code Coverage" \
+            --settings coverage.runsettings \
             --results-directory ./test-results
 
-      - name: Run Web unit tests
+      - name: Run Web tests
         run: |
           dotnet test tests/Taskify.Web.Tests \
             --configuration Release \
             --logger trx \
             --collect:"XPlat Code Coverage" \
+            --settings coverage.runsettings \
             --results-directory ./test-results
 
       - name: Publish test results
@@ -77,6 +82,42 @@ jobs:
         with:
           files: test-results/**/*.trx
 
+      - name: Merge coverage reports
+        run: |
+          dotnet reportgenerator \
+            -reports:"test-results/**/coverage.opencover.xml" \
+            -targetdir:coverage \
+            -reporttypes:"JsonSummary;MarkdownSummaryGithub"
+
+      - name: Enforce 80% overall line coverage
+        run: |
+          coverage=$(jq -r '.summary.linecoverage' coverage/Summary.json)
+          echo "Line coverage: ${coverage}%"
+          cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          if awk -v c="$coverage" 'BEGIN { exit !(c < 80) }'; then
+            echo "::error::Line coverage ${coverage}% is below the 80% gate."
+            exit 1
+          fi
+
+      - name: Merge critical-path coverage (Identity, Services, Endpoints)
+        run: |
+          dotnet reportgenerator \
+            -reports:"test-results/**/coverage.opencover.xml" \
+            -targetdir:coverage-critical \
+            -reporttypes:"JsonSummary;MarkdownSummaryGithub" \
+            -assemblyfilters:"+Taskify.Api" \
+            -classfilters:"+Taskify.Api.Identity.*;+Taskify.Api.Services.*;+Taskify.Api.Endpoints.*"
+
+      - name: Enforce 95% critical-path line coverage
+        run: |
+          coverage=$(jq -r '.summary.linecoverage' coverage-critical/Summary.json)
+          echo "Critical-path line coverage: ${coverage}%"
+          cat coverage-critical/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          if awk -v c="$coverage" 'BEGIN { exit !(c < 95) }'; then
+            echo "::error::Critical-path line coverage ${coverage}% is below the 95% gate."
+            exit 1
+          fi
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         if: always()
@@ -84,6 +125,20 @@ jobs:
           directory: ./test-results
           flags: unittests
           fail_ci_if_error: false
+
+  docker-build:
+    name: Build container images
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f src/Taskify.Api/Dockerfile -t taskify-api:ci .
+
+      - name: Build Web image
+        run: docker build -f src/Taskify.Web/Dockerfile -t taskify-web:ci .
 
   lint:
     name: Lint Code
@@ -131,3 +186,6 @@ jobs:
 
       - name: Validate container-apps module
         run: az bicep build --file infra/resources/container-apps.bicep
+
+      - name: Validate redis module
+        run: az bicep build --file infra/resources/redis.bicep

@@ -150,6 +150,7 @@ Add the following secrets (values from Step 6 above):
 | `AZURE_TENANT_ID` | `<TENANT_ID>` | Azure AD tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | `<SUBSCRIPTION_ID>` | Azure subscription ID |
 | `POSTGRESQL_ADMIN_PASSWORD` | `<generated-password>` | PostgreSQL admin password (see below) |
+| `AUTH_SIGNING_KEY` | `<generated-key>` | Key that signs the Active User identity the API issues (see below) |
 
 ### Step 3: Generate PostgreSQL Admin Password
 
@@ -163,6 +164,16 @@ echo "PostgreSQL Admin Password: $POSTGRES_PASSWORD"
 Add this as GitHub secret `POSTGRESQL_ADMIN_PASSWORD`.
 
 **Security note**: This password is used only during initial provisioning. Container Apps use Managed Identity to access PostgreSQL in production.
+
+### Step 4: Generate the Identity Signing Key
+
+The API signs the identity it issues after the user picker with this key. It must be at least 32 random bytes, base64-encoded; the API refuses to start without it.
+
+```bash
+openssl rand -base64 32
+```
+
+Add the output as GitHub secret `AUTH_SIGNING_KEY`. The deploy workflow passes it to the `authSigningKey` Bicep parameter, which stores it as the `auth-signing-key` Container Apps secret. Use a different key per environment. Changing it signs every Active User out of their current identity; the web app gets a new one on the next pick.
 
 ---
 

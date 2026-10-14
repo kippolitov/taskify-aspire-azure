@@ -1,8 +1,15 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Taskify.Shared.Realtime;
 
 namespace Taskify.Api.Hubs;
 
-public class TaskifyHub : Hub
+/// <summary>
+/// Live board updates. Connecting needs a valid identity (FR-028). An open connection outlives
+/// its token: <c>CloseOnAuthenticationExpiration</c> stays off.
+/// </summary>
+[Authorize]
+public class TaskifyHub : Hub<ITaskifyClient>
 {
     public async Task JoinBoard(int projectId)
     {

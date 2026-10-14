@@ -1,4 +1,4 @@
 using BenchmarkDotNet.Running;
 using Taskify.Benchmarks;
 
-BenchmarkRunner.Run<ApiBenchmarks>();
+BenchmarkSwitcher.FromAssembly(typeof(TaskListBenchmark).Assembly).Run(args);

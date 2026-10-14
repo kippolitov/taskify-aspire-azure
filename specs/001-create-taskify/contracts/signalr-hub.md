@@ -1,5 +1,7 @@
 # SignalR Hub Contract: Create Taskify
 
+Superseded by `specs/004-production-hardening/contracts/`.
+
 **Hub**: `TaskifyHub`  
 **URL pattern**: `/hubs/taskify` (registered in `Taskify.Api`)  
 **Transport**: WebSockets (fallback: Long Polling)  
