@@ -63,6 +63,23 @@ public class HomeTests : BunitContext
     }
 
     [Fact]
+    public void Home_ShowsRolesAsReadableLabels()
+    {
+        RegisterServices();
+
+        var cut = Render<Home>();
+
+        cut.WaitForState(
+            () => cut.FindAll(".user-card").Count == 5,
+            timeout: TimeSpan.FromSeconds(3)
+        );
+
+        var roles = cut.FindAll(".user-card__role").Select(e => e.TextContent.Trim()).ToList();
+        Assert.Equal(1, roles.Count(r => r == "Product Manager"));
+        Assert.Equal(4, roles.Count(r => r == "Engineer"));
+    }
+
+    [Fact]
     public void Home_ClickingUserCard_SetsIdentityCurrentUser()
     {
         RegisterServices();

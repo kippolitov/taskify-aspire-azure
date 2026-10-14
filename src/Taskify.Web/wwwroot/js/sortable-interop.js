@@ -211,6 +211,15 @@ window.sortableInterop = (() => {
                 const toColumn = evt.to.dataset.column;
                 const fromColumn = evt.from.dataset.column;
 
+                // A drop in the same column changes nothing on the server, so put the card
+                // back where Blazor rendered it. Otherwise the screen and Blazor's render
+                // tree disagree until the next reload.
+                if (fromColumn === toColumn && evt.oldIndex !== evt.newIndex) {
+                    evt.item.remove();
+                    evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex] ?? null);
+                    return;
+                }
+
                 if (fromColumn !== toColumn && taskId && toColumn) {
                     // Use InvokeVoidAsync — positional args only (R-011)
                     dotnetRef

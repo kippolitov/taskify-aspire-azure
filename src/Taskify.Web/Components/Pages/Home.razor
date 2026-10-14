@@ -30,7 +30,7 @@
                     aria-label="Select @user.DisplayName"
                     @onclick="() => SelectUser(user)">
                     <div class="user-card__name">@user.DisplayName</div>
-                    <div class="user-card__role">@user.Role</div>
+                    <div class="user-card__role">@RoleLabel(user.Role)</div>
                 </button>
             }
         </div>
@@ -58,6 +58,13 @@
             _loading = false;
         }
     }
+
+    private static string RoleLabel(UserRole role) =>
+        role switch
+        {
+            UserRole.ProductManager => "Product Manager",
+            _ => role.ToString(),
+        };
 
     private async Task SelectUser(UserDto user)
     {
